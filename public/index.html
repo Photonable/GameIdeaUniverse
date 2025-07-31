@@ -51,7 +51,7 @@
             box-shadow: 0 10px 15px -3px rgba(0, 0, 0, 0.1), 0 4px 6px -2px rgba(0, 0, 0, 0.05);
         }
     </style>
-    <!-- Google reCAPTCHA -->
+     <!-- Google reCAPTCHA -->
     <script src="https://www.google.com/recaptcha/api.js" async defer></script>
 </head>
 <body class="bg-gray-100 text-gray-800">
@@ -63,8 +63,8 @@
             <p class="text-gray-600 mt-2 mb-6">Please verify you're not a robot to continue.</p>
             <!-- Google reCAPTCHA -->
             <div class="g-recaptcha my-4 flex justify-center" 
-             data-sitekey="6Lea7ZUrAAAAADNomiJtEn309X5wWL5BUm3eRarH"
-             data-callback="onRecaptchaSuccess">
+                 data-sitekey="6Lea7ZUrAAAAADNomiJtEn309X5wWL5BUm3eRarH"
+                 data-callback="onRecaptchaSuccess">
             </div>
             <button id="login-btn-main" class="bg-indigo-600 text-white font-semibold py-3 px-6 rounded-md hover:bg-indigo-700 focus:outline-none focus:ring-2 focus:ring-offset-2 focus:ring-indigo-500 transition duration-150 ease-in-out opacity-50 cursor-not-allowed" disabled>
                 Login with Google
@@ -81,6 +81,7 @@
                 <!-- Auth Buttons -->
                 <div id="auth-container" class="absolute top-0 right-0">
                     <div id="user-info" class="hidden items-center">
+                        <button id="my-collection-btn" class="text-sm font-medium text-indigo-600 hover:underline mr-4">My Collection</button>
                         <span id="user-name" class="mr-4 text-sm font-medium text-gray-700"></span>
                         <button id="logout-btn" class="text-sm text-gray-500 hover:text-gray-700 underline">Logout</button>
                     </div>
@@ -257,6 +258,7 @@
         import { initializeApp } from "https://www.gstatic.com/firebasejs/11.6.1/firebase-app.js";
         import { getAuth, GoogleAuthProvider, signInWithPopup, onAuthStateChanged, signOut, getAdditionalUserInfo } from "https://www.gstatic.com/firebasejs/11.6.1/firebase-auth.js";
         import { getFirestore, doc, setDoc, getDoc, updateDoc, collection, getDocs, writeBatch, runTransaction } from "https://www.gstatic.com/firebasejs/11.6.1/firebase-firestore.js";
+        import { getFunctions, httpsCallable } from "https://www.gstatic.com/firebasejs/11.6.1/firebase-functions.js";
 
         // --- DATA STORE ---
         let globalGameIdeas = [
@@ -316,9 +318,10 @@
         const generationCounterDiv = document.getElementById('generation-counter');
         const saveIdeaBtn = document.getElementById('save-idea-btn');
         const exportGdocBtn = document.getElementById('export-gdoc-btn');
+        const myCollectionBtn = document.getElementById('my-collection-btn');
 
         // --- Firebase Initialization ---
-        let auth, db, userId;
+        let auth, db, functions, userId;
         const firebaseConfig = {
             apiKey: "AIzaSyAMP99RMDPn1vlG2Zuc09L3HVw43A71LLY",
             authDomain: "game-idea-universe.firebaseapp.com",
@@ -328,9 +331,13 @@
             appId: "1:850865251637:web:fe16ce998a81a96546987c",
             measurementId: "G-D514VR833D"
         };
+        // IMPORTANT: Add your Google Client ID here for the export feature to work!
+        const GOOGLE_CLIENT_ID = '850865251637-pjqrag7ifu8spe38hs94rcljic8e8hvn.apps.googleusercontent.com';
+
         const app = initializeApp(firebaseConfig);
         auth = getAuth(app);
         db = getFirestore(app);
+        functions = getFunctions(app);
 
 
         // --- FUNCTIONS ---
@@ -339,96 +346,22 @@
          * Fetches data from Reddit, categorizes it using AI, and adds it to our list.
          */
         async function fetchAndCategorizeRedditData() {
-            console.log("Simulating fetching data from Reddit...");
-            const redditPosts = [
-                { title: "Idea: A detective game where you play as a house cat", selftext: "You'd have to solve mysteries by knocking things over, sleeping on clues, and meowing at your human until they figure it out." },
-                { title: "A survival game, but you're a single parent", selftext: "Manage resources, protect your child from dangers, and also make sure they do their homework. The real final boss is a teenager's attitude." }
-            ];
-
-            for (const post of redditPosts) {
-                const prompt = `Analyze the following game idea and provide a structured JSON response.
-                - **name**: A catchy title for the game idea.
-                - **description**: A concise summary of the idea.
-                - **category**: Must be one of: "Video Game", "Board Game", "Card Game", "Other".
-                - **genre**: A suitable genre for the game.
-                - **viability**: An overall market potential score (integer 1-100).
-                - **viabilityBreakdown**: An object with three keys:
-                    - **originality**: How unique is the core concept? (integer 1-100)
-                    - **marketAppeal**: How broad is the target audience? (integer 1-100)
-                    - **scope**: How complex would this be to develop? (integer 1-100, where 1 is trivial and 100 is a massive AAA project)
-
-                Game Idea Title: ${post.title}
-                Game Idea Description: ${post.selftext}`;
-
-                try {
-                    const categorizedIdea = await callGemini(prompt, true);
-                    if (categorizedIdea) {
-                         globalGameIdeas.push({ ...categorizedIdea, source: 'Reddit' });
-                    }
-                } catch (error) {
-                    console.error("Error categorizing Reddit post:", error);
-                }
-            }
+            // This function is now a simulation and would be replaced by a backend process in a real app.
+            console.log("Simulating fetching and categorizing data...");
             updateUI();
         }
 
         /**
-         * Calls the Gemini API to generate or categorize content.
+         * Calls our secure Cloud Function to generate content.
          */
-        async function callGemini(prompt, isJson = false) {
-            const apiKey = ""; // Provided by the environment
-            const apiUrl = `https://generativelanguage.googleapis.com/v1beta/models/gemini-2.5-flash-preview-05-20:generateContent?key=${apiKey}`;
-            
-            const payload = {
-                contents: [{ role: "user", parts: [{ text: prompt }] }]
-            };
-
-            if (isJson) {
-                payload.generationConfig = {
-                    responseMimeType: "application/json",
-                    responseSchema: {
-                        type: "OBJECT",
-                        properties: {
-                            "name": { "type": "STRING" },
-                            "description": { "type": "STRING" },
-                            "category": { "type": "STRING", "enum": ["Video Game", "Board Game", "Card Game", "Other"] },
-                            "genre": { "type": "STRING" },
-                            "viability": { "type": "INTEGER" },
-                            "viabilityBreakdown": {
-                                "type": "OBJECT",
-                                "properties": {
-                                    "originality": { "type": "INTEGER" },
-                                    "marketAppeal": { "type": "INTEGER" },
-                                    "scope": { "type": "INTEGER" }
-                                },
-                                "required": ["originality", "marketAppeal", "scope"]
-                            }
-                        },
-                        required: ["name", "description", "category", "genre", "viability", "viabilityBreakdown"]
-                    }
-                };
-            }
-
+        async function callSecureGenerator(prompt) {
+            const generateIdea = httpsCallable(functions, 'generateIdea');
             try {
-                const response = await fetch(apiUrl, {
-                    method: 'POST',
-                    headers: { 'Content-Type': 'application/json' },
-                    body: JSON.stringify(payload)
-                });
-
-                if (!response.ok) throw new Error(`API call failed with status: ${response.status}`);
-                const result = await response.json();
-                
-                if (result.candidates && result.candidates.length > 0) {
-                    const text = result.candidates[0].content.parts[0].text;
-                    return isJson ? JSON.parse(text) : text;
-                }
-                return null;
-
-            } catch (error)
-                {
-                console.error("Gemini API call error:", error);
-                aiResultDiv.innerHTML = `<p class="text-red-500">Sorry, something went wrong. Please try again.</p>`;
+                const result = await generateIdea({ prompt: prompt });
+                return result.data;
+            } catch (error) {
+                console.error("Cloud Function error:", error);
+                aiResultDiv.innerHTML = `<p class="text-red-500">Sorry, the AI generator failed. Please try again later.</p>`;
                 return null;
             }
         }
@@ -461,7 +394,7 @@
                 - **marketAppeal**: How broad is the target audience? (integer 1-100)
                 - **scope**: How complex would this be to develop? (integer 1-100, where 1 is trivial and 100 is a massive AAA project)`;
 
-            const newIdea = await callGemini(generationPrompt, true);
+            const newIdea = await callSecureGenerator(generationPrompt);
 
             aiLoader.style.display = 'none';
             aiResultDiv.style.display = 'block';
@@ -690,18 +623,7 @@
                 }
             });
 
-            loginBtnMain.addEventListener('click', async () => {
-                const provider = new GoogleAuthProvider();
-                provider.addScope('https://www.googleapis.com/auth/drive.file');
-                try {
-                    const result = await signInWithPopup(auth, provider);
-                    const credential = GoogleAuthProvider.credentialFromResult(result);
-                    googleOauthToken = credential.accessToken;
-                } catch (error) {
-                    console.error("Login failed:", error);
-                    alert("Login failed. This may be due to the development environment. Please try again later.");
-                }
-            });
+            loginBtnMain.addEventListener('click', () => reauthenticateForDrive(true));
 
             logoutBtn.addEventListener('click', async () => {
                 try {
@@ -718,6 +640,24 @@
                     console.error("Logout failed:", error);
                 }
             });
+        }
+
+        async function reauthenticateForDrive(isInitialLogin = false) {
+            const provider = new GoogleAuthProvider();
+            provider.addScope('https://www.googleapis.com/auth/drive.file');
+            try {
+                const result = await signInWithPopup(auth, provider);
+                const credential = GoogleAuthProvider.credentialFromResult(result);
+                googleOauthToken = credential.accessToken;
+                if (!isInitialLogin) {
+                    exportToGoogleDocs(); // Immediately try exporting again after getting the token
+                }
+                return googleOauthToken;
+            } catch (error) {
+                console.error("Reauthentication for Drive failed:", error);
+                alert("Could not get Google Drive permissions. Please try again.");
+                return null;
+            }
         }
 
         // --- Payment & User Profile Functions ---
@@ -848,68 +788,91 @@
         }
 
         // --- Google Drive Export Function ---
-        async function getOrCreateFolder() {
+        async function getOrCreateFolder(token) {
             let folderId = null;
             
-            // 1. Search for the folder
-            const query = "mimeType='application/vnd.google-apps.folder' and name='Game Ideas' and trashed=false";
-            const response = await gapi.client.drive.files.list({ q: query, fields: 'files(id, name)' });
-            
-            if (response.result.files.length > 0) {
-                // Folder exists
-                folderId = response.result.files[0].id;
+            const response = await fetch("https://www.googleapis.com/drive/v3/files?q=mimeType='application/vnd.google-apps.folder' and name='Game Ideas' and trashed=false", {
+                headers: { 'Authorization': `Bearer ${token}` }
+            });
+            const data = await response.json();
+
+            if (data.files && data.files.length > 0) {
+                folderId = data.files[0].id;
             } else {
-                // 2. Create the folder if it doesn't exist
                 const folderMetadata = {
                     name: 'Game Ideas',
                     mimeType: 'application/vnd.google-apps.folder'
                 };
-                const folderResponse = await gapi.client.drive.files.create({ resource: folderMetadata, fields: 'id' });
-                folderId = folderResponse.result.id;
+                const createResponse = await fetch("https://www.googleapis.com/drive/v3/files", {
+                    method: 'POST',
+                    headers: {
+                        'Authorization': `Bearer ${token}`,
+                        'Content-Type': 'application/json'
+                    },
+                    body: JSON.stringify(folderMetadata)
+                });
+                const folderData = await createResponse.json();
+                folderId = folderData.id;
             }
             return folderId;
         }
 
         async function exportToGoogleDocs() {
             if (!currentIdeaInModal) return;
-            if (!googleOauthToken) {
-                alert("Please sign in with Google to export.");
+            if (GOOGLE_CLIENT_ID.startsWith('YOUR_GOOGLE_CLIENT_ID')) {
+                alert('Export feature is not configured. Please add your Google Client ID to the index.html file.');
                 return;
+            }
+
+            let token = googleOauthToken;
+            if (!token) {
+                token = await reauthenticateForDrive();
+                if (!token) return; 
             }
 
             exportGdocBtn.textContent = 'Exporting...';
             exportGdocBtn.disabled = true;
 
             const idea = currentIdeaInModal;
-            const content = `...`; // Content generation logic remains the same
+            const docTitle = `${idea.name} - Game Idea`;
             
             try {
-                gapi.load('client', async () => {
-                    await gapi.client.init({
-                        apiKey: firebaseConfig.apiKey,
-                        clientId: 'YOUR_GOOGLE_CLIENT_ID.apps.googleusercontent.com', // You need to get this from Google Cloud Console
-                        discoveryDocs: ["https://www.googleapis.com/discovery/v1/apis/drive/v3/rest"],
-                    });
+                const folderId = await getOrCreateFolder(token);
 
-                    gapi.client.setToken({ access_token: googleOauthToken });
-                    
-                    const folderId = await getOrCreateFolder();
-
-                    const fileMetadata = {
-                        name: `${idea.name} - Game Idea`,
-                        mimeType: 'application/vnd.google-apps.document',
-                        parents: [folderId] // Set the parent folder here
-                    };
-
-                    const response = await gapi.client.drive.files.create({
-                        resource: fileMetadata
-                    });
-                    
-                    const fileId = response.result.id;
-                    
-                    // The rest of the content upload logic remains the same...
-                    alert(`Successfully created Google Doc in the "Game Ideas" folder!`);
+                // NEW: Check for existing file
+                const fileQuery = `name='${docTitle}' and '${folderId}' in parents and trashed=false`;
+                const searchResponse = await fetch(`https://www.googleapis.com/drive/v3/files?q=${encodeURIComponent(fileQuery)}&fields=files(id)`, {
+                    headers: { 'Authorization': `Bearer ${token}` }
                 });
+                const searchData = await searchResponse.json();
+
+                if (searchData.files && searchData.files.length > 0) {
+                    alert(`A document named "${docTitle}" already exists in your "Game Ideas" folder.`);
+                    return; // Stop the export
+                }
+
+                // If no file found, proceed with creation
+                const fileMetadata = {
+                    name: docTitle,
+                    mimeType: 'application/vnd.google-apps.document',
+                    parents: [folderId]
+                };
+
+                const createResponse = await fetch("https://www.googleapis.com/drive/v3/files", {
+                    method: 'POST',
+                    headers: {
+                        'Authorization': `Bearer ${token}`,
+                        'Content-Type': 'application/json'
+                    },
+                    body: JSON.stringify(fileMetadata)
+                });
+                const fileData = await createResponse.json();
+                const fileId = fileData.id;
+                
+                // This part of the API is a bit tricky, it requires a multipart upload to set content.
+                // For this prototype, we'll just create the blank document. A full implementation would add the content here.
+                alert(`Successfully created blank Google Doc "${docTitle}" in the "Game Ideas" folder!`);
+
             } catch (error) {
                 console.error("Error exporting to Google Docs:", error);
                 alert("Failed to export. Please ensure you have granted Google Drive permissions.");
@@ -975,6 +938,11 @@
             }
         });
         exportGdocBtn.addEventListener('click', exportToGoogleDocs);
+        myCollectionBtn.addEventListener('click', () => {
+            sourceFilter.value = 'My Saved Ideas';
+            displayGameIdeas();
+            gameIdeasContainer.scrollIntoView({ behavior: 'smooth' });
+        });
 
 
         // Initial Load

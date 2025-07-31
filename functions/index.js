@@ -1,17 +1,57 @@
 const functions = require("firebase-functions");
 const admin = require("firebase-admin");
+const { GoogleGenerativeAI } = require("@google/generative-ai");
+
 admin.initializeApp();
+
+// Initialize the AI with your API key stored securely in environment variables
+// Make sure to set this by running: firebase functions:config:set gemini.key="YOUR_API_KEY"
+const genAI = new GoogleGenerativeAI(functions.config().gemini.key);
+
+/**
+ * A secure, callable function to generate game ideas using the Gemini API.
+ */
+exports.generateIdea = functions.https.onCall(async (data, context) => {
+  // Check if the user is authenticated
+  if (!context.auth) {
+    throw new functions.https.HttpsError(
+      "unauthenticated",
+      "The function must be called while authenticated."
+    );
+  }
+
+  const prompt = data.prompt;
+  if (!prompt || typeof prompt !== 'string') {
+    throw new functions.https.HttpsError(
+      "invalid-argument",
+      "The function must be called with a 'prompt' argument."
+    );
+  }
+
+  try {
+    const model = genAI.getGenerativeModel({ model: "gemini-pro" });
+    const result = await model.generateContent(prompt);
+    const response = await result.response;
+    const text = response.text();
+    
+    // The AI returns a markdown JSON block, so we need to clean it up
+    const cleanedJson = text.replace(/```json\n?|```/g, "").trim();
+    return JSON.parse(cleanedJson);
+
+  } catch (error) {
+    console.error("Error calling Gemini API:", error);
+    throw new functions.https.HttpsError(
+      "internal",
+      "Unable to generate idea. Please check server logs."
+    );
+  }
+});
 
 /**
  * Sets a custom user claim to identify a user as a creator.
- * This function should only be called by an authorized admin.
- * @param {object} data The data passed to the function, expecting `data.email`.
- * @param {object} context The context of the function call, containing auth information.
- * @returns {object} A result object with a success message.
+ * This should only be called by an authorized admin.
  */
 exports.setCreatorRole = functions.https.onCall(async (data, context) => {
-  // For production, you would add a check here to ensure only an admin can call this.
-  // Example: if (context.auth.token.admin !== true) { ... }
   if (!context.auth) {
     throw new functions.https.HttpsError(
       "unauthenticated",
@@ -28,9 +68,7 @@ exports.setCreatorRole = functions.https.onCall(async (data, context) => {
   }
 
   try {
-    // Get the user by email
     const user = await admin.auth().getUserByEmail(email);
-    // Set the custom claim 'creator' to true
     await admin.auth().setCustomUserClaims(user.uid, { creator: true });
     
     return { message: `Success! ${email} has been made a creator.` };
