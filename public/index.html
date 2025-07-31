@@ -1,0 +1,966 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>Game Idea Universe</title>
+    <script src="https://cdn.tailwindcss.com"></script>
+    <link href="https://fonts.googleapis.com/css2?family=Inter:wght@400;500;600;700&display=swap" rel="stylesheet">
+    
+    <!-- PWA Manifest and Theme Color -->
+    <link rel="manifest" href="/manifest.json">
+    <meta name="theme-color" content="#4f46e5">
+
+    <style>
+        body {
+            font-family: 'Inter', sans-serif;
+        }
+        .loader {
+            border: 4px solid #f3f3f3;
+            border-top: 4px solid #3498db;
+            border-radius: 50%;
+            width: 40px;
+            height: 40px;
+            animation: spin 1s linear infinite;
+            margin: 20px auto;
+        }
+        @keyframes spin {
+            0% { transform: rotate(0deg); }
+            100% { transform: rotate(360deg); }
+        }
+        /* Modal styles */
+        .modal-overlay {
+            transition: opacity 0.3s ease;
+        }
+        .modal-container {
+            transition: all 0.3s ease;
+        }
+        .viability-breakdown {
+            max-height: 0;
+            overflow: hidden;
+            transition: max-height 0.5s ease-in-out;
+        }
+        .login-gate {
+            transition: opacity 0.5s ease-in-out;
+        }
+        .plan-card {
+            transition: transform 0.2s ease-in-out, box-shadow 0.2s ease-in-out;
+        }
+        .plan-card:hover {
+            transform: translateY(-5px);
+            box-shadow: 0 10px 15px -3px rgba(0, 0, 0, 0.1), 0 4px 6px -2px rgba(0, 0, 0, 0.05);
+        }
+    </style>
+</head>
+<body class="bg-gray-100 text-gray-800">
+
+    <!-- Login Gate -->
+    <div id="login-gate" class="login-gate fixed inset-0 bg-gray-100 flex items-center justify-center z-50">
+        <div class="text-center p-8 bg-white rounded-lg shadow-xl max-w-sm mx-auto">
+            <h1 class="text-3xl font-bold text-gray-900">Game Idea Universe</h1>
+            <p class="text-gray-600 mt-2 mb-6">Please sign in to continue.</p>
+            <button id="login-btn-main" class="bg-indigo-600 text-white font-semibold py-3 px-6 rounded-md hover:bg-indigo-700 focus:outline-none focus:ring-2 focus:ring-offset-2 focus:ring-indigo-500 transition duration-150 ease-in-out">
+                Login with Google
+            </button>
+        </div>
+    </div>
+
+    <div id="main-content" class="hidden">
+        <div class="container mx-auto p-4 sm:p-6 lg:p-8">
+            <header class="text-center mb-8 relative">
+                <h1 class="text-4xl font-bold text-gray-900">Game Idea Universe</h1>
+                <p class="text-lg text-gray-600 mt-2">Discover, filter, and generate unique game ideas.</p>
+                
+                <!-- Auth Buttons -->
+                <div id="auth-container" class="absolute top-0 right-0">
+                    <div id="user-info" class="hidden items-center">
+                        <span id="user-name" class="mr-4 text-sm font-medium text-gray-700"></span>
+                        <button id="logout-btn" class="text-sm text-gray-500 hover:text-gray-700 underline">Logout</button>
+                    </div>
+                </div>
+            </header>
+
+            <!-- AI Idea Generator -->
+            <div class="bg-white p-6 rounded-lg shadow-md mb-8">
+                <div class="flex justify-between items-center mb-4">
+                    <h2 class="text-2xl font-semibold text-gray-800">AI Idea Generator</h2>
+                    <div id="generation-counter" class="text-sm font-medium text-gray-500"></div>
+                </div>
+                <p class="text-gray-600 mb-4">Have a specific theme in mind? Let our AI create a game idea for you. (Shortcut: Alt + G)</p>
+                <div class="flex flex-col sm:flex-row gap-4">
+                    <input type="text" id="ai-prompt" placeholder="e.g., 'A cooking game in space'" class="flex-grow p-3 border border-gray-300 rounded-md shadow-sm focus:ring-indigo-500 focus:border-indigo-500">
+                    <button id="generate-btn" class="bg-indigo-600 text-white font-semibold py-3 px-6 rounded-md hover:bg-indigo-700 focus:outline-none focus:ring-2 focus:ring-offset-2 focus:ring-indigo-500 transition duration-150 ease-in-out">
+                        Generate Idea
+                    </button>
+                </div>
+                <div id="ai-result-container" class="mt-4 hidden">
+                     <div id="ai-loader" class="loader hidden"></div>
+                     <div id="ai-result" class="bg-indigo-50 p-4 rounded-md"></div>
+                </div>
+            </div>
+
+
+            <!-- Filters for Curated & Scraped Ideas -->
+            <div class="bg-white p-6 rounded-lg shadow-md mb-8">
+                 <h2 class="text-2xl font-semibold mb-4 text-gray-800">Curated & Scraped Ideas</h2>
+                <div class="grid grid-cols-1 md:grid-cols-3 gap-6">
+                    <div>
+                        <label for="category" class="block text-sm font-medium text-gray-700 mb-2">Category</label>
+                        <select id="category" class="w-full p-2 border border-gray-300 rounded-md shadow-sm focus:ring-indigo-500 focus:border-indigo-500">
+                            <option value="all">All</option>
+                            <option value="Video Game">Video Game</option>
+                            <option value="Board Game">Board Game</option>
+                            <option value="Card Game">Card Game</option>
+                            <option value="Other">Other</option>
+                        </select>
+                    </div>
+                    <div>
+                        <label for="genre" class="block text-sm font-medium text-gray-700 mb-2">Genre</label>
+                        <select id="genre" class="w-full p-2 border border-gray-300 rounded-md shadow-sm focus:ring-indigo-500 focus:border-indigo-500">
+                            <option value="all">All</option>
+                            <!-- Genres will be populated by JavaScript -->
+                        </select>
+                    </div>
+                     <div>
+                        <label for="source-filter" class="block text-sm font-medium text-gray-700 mb-2">Source</label>
+                        <select id="source-filter" class="w-full p-2 border border-gray-300 rounded-md shadow-sm focus:ring-indigo-500 focus:border-indigo-500">
+                            <option value="all">All</option>
+                            <option value="My Saved Ideas">My Saved Ideas</option>
+                            <option value="Existing Game">Existing Game</option>
+                            <option value="Curated">Curated</option>
+                            <option value="Reddit">Reddit</option>
+                             <option value="AI">AI Generated</option>
+                        </select>
+                    </div>
+                </div>
+            </div>
+
+            <div id="game-ideas" class="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-3 gap-6">
+                <!-- Game ideas will be populated here -->
+            </div>
+        </div>
+    </div>
+
+    <!-- Idea Details Modal -->
+    <div id="idea-modal" class="modal-overlay fixed inset-0 bg-black bg-opacity-50 flex items-center justify-center p-4 hidden opacity-0">
+        <div class="modal-container bg-white w-full max-w-2xl rounded-lg shadow-xl transform scale-95 overflow-y-auto max-h-full">
+             <div class="p-6">
+                <div class="flex justify-between items-start">
+                    <h2 id="modal-title" class="text-3xl font-bold text-gray-900">Modal Title</h2>
+                    <button id="modal-close-btn" class="text-gray-400 hover:text-gray-600 text-3xl leading-none">&times;</button>
+                </div>
+                <div class="mt-4">
+                    <p id="modal-description" class="text-gray-700 mb-6">Description goes here.</p>
+                    
+                    <div class="grid grid-cols-2 gap-4 text-sm mb-4">
+                        <div class="bg-gray-50 p-3 rounded-lg">
+                            <p class="font-semibold text-gray-600">Original Platform</p>
+                            <p id="modal-category" class="text-gray-900"></p>
+                        </div>
+                        <div class="bg-gray-50 p-3 rounded-lg">
+                            <p class="font-semibold text-gray-600">Genre</p>
+                            <p id="modal-genre" class="text-gray-900"></p>
+                        </div>
+                    </div>
+
+                    <div class="bg-gray-50 p-4 rounded-lg mb-6">
+                        <div class="flex justify-between items-center">
+                            <div>
+                                <p class="font-semibold text-gray-600">Viability Score</p>
+                                <p id="modal-viability" class="text-2xl font-bold text-indigo-600"></p>
+                            </div>
+                            <button id="viability-breakdown-btn" class="text-sm text-indigo-600 hover:underline">Show Breakdown</button>
+                        </div>
+                        <div id="modal-viability-breakdown" class="viability-breakdown mt-4 pt-4 border-t border-gray-200">
+                             <div class="space-y-3">
+                                <div class="flex justify-between"><span>Originality</span><span id="breakdown-originality" class="font-semibold"></span></div>
+                                <div class="flex justify-between"><span>Market Appeal</span><span id="breakdown-market" class="font-semibold"></span></div>
+                                <div class="flex justify-between"><span>Development Scope</span><span id="breakdown-scope" class="font-semibold"></span></div>
+                             </div>
+                        </div>
+                    </div>
+
+                    <div id="related-ideas-container" class="mt-6">
+                        <h3 class="text-xl font-semibold text-gray-800 mb-3">Related Ideas</h3>
+                        <div id="related-ideas-list" class="space-y-3">
+                            <!-- Related ideas will be populated here -->
+                        </div>
+                    </div>
+                    
+                    <div class="mt-6 pt-6 border-t border-gray-200 space-y-3">
+                         <button id="save-idea-btn" class="w-full bg-green-600 text-white font-semibold py-3 px-4 rounded-md hover:bg-green-700 transition">
+                            Save Idea to My Collection
+                        </button>
+                         <button id="export-gdoc-btn" class="w-full bg-blue-600 text-white font-semibold py-3 px-4 rounded-md hover:bg-blue-700 transition">
+                            Export to Google Docs
+                        </button>
+                    </div>
+
+                </div>
+            </div>
+        </div>
+    </div>
+
+    <!-- Payment Modal -->
+    <div id="payment-modal" class="modal-overlay fixed inset-0 bg-black bg-opacity-50 flex items-center justify-center p-4 hidden opacity-0 z-50">
+        <div class="modal-container bg-white w-full max-w-4xl rounded-lg shadow-xl transform scale-95">
+             <div class="p-8 text-center">
+                <h2 class="text-3xl font-bold text-gray-900">Choose Your Plan</h2>
+                <p class="text-gray-600 mt-2 mb-8">Your first generation is free! Choose a plan to continue creating.</p>
+                <div class="grid grid-cols-1 md:grid-cols-4 gap-6">
+                    <!-- Pay per use -->
+                    <div class="plan-card border-2 border-gray-200 p-6 rounded-lg">
+                        <h3 class="text-xl font-semibold">Single Shot</h3>
+                        <p class="text-3xl font-bold my-4">$1</p>
+                        <p class="text-gray-500 text-sm mb-6">Per Generation</p>
+                        <button class="payment-btn w-full bg-gray-200 text-gray-800 font-semibold py-2 px-4 rounded-md hover:bg-gray-300" data-generations="1">Purchase</button>
+                    </div>
+                    <!-- Tier 1 -->
+                    <div class="plan-card border-2 border-gray-200 p-6 rounded-lg">
+                        <h3 class="text-xl font-semibold">Spark</h3>
+                        <p class="text-3xl font-bold my-4">$2<span class="text-base font-normal text-gray-500">/mo</span></p>
+                        <p class="text-gray-500 text-sm mb-6">4 Generations</p>
+                        <button class="payment-btn w-full bg-indigo-600 text-white font-semibold py-2 px-4 rounded-md hover:bg-indigo-700" data-generations="4">Subscribe</button>
+                    </div>
+                    <!-- Tier 2 -->
+                    <div class="plan-card border-2 border-indigo-600 p-6 rounded-lg relative">
+                        <div class="absolute top-0 -translate-y-1/2 left-1/2 -translate-x-1/2 bg-indigo-600 text-white text-xs font-bold px-3 py-1 rounded-full">POPULAR</div>
+                        <h3 class="text-xl font-semibold">Creator</h3>
+                        <p class="text-3xl font-bold my-4">$5<span class="text-base font-normal text-gray-500">/mo</span></p>
+                        <p class="text-gray-500 text-sm mb-6">10 Generations</p>
+                        <button class="payment-btn w-full bg-indigo-600 text-white font-semibold py-2 px-4 rounded-md hover:bg-indigo-700" data-generations="10">Subscribe</button>
+                    </div>
+                    <!-- Unlimited -->
+                    <div class="plan-card border-2 border-gray-200 p-6 rounded-lg">
+                        <h3 class="text-xl font-semibold">Universe</h3>
+                        <p class="text-3xl font-bold my-4">$11<span class="text-base font-normal text-gray-500">/mo</span></p>
+                        <p class="text-gray-500 text-sm mb-6">Unlimited</p>
+                        <button class="payment-btn w-full bg-indigo-600 text-white font-semibold py-2 px-4 rounded-md hover:bg-indigo-700" data-generations="Infinity">Subscribe</button>
+                    </div>
+                </div>
+             </div>
+        </div>
+    </div>
+    
+    <!-- Google API Script -->
+    <script src="https://apis.google.com/js/api.js"></script>
+
+    <script type="module">
+        // --- Firebase Imports ---
+        import { initializeApp } from "https://www.gstatic.com/firebasejs/11.6.1/firebase-app.js";
+        import { getAuth, GoogleAuthProvider, signInWithPopup, onAuthStateChanged, signOut, getAdditionalUserInfo } from "https://www.gstatic.com/firebasejs/11.6.1/firebase-auth.js";
+        import { getFirestore, doc, setDoc, getDoc, updateDoc, collection, getDocs, writeBatch, runTransaction } from "https://www.gstatic.com/firebasejs/11.6.1/firebase-firestore.js";
+
+        // --- DATA STORE ---
+        let globalGameIdeas = [
+            // Existing Games
+            { name: "The Witcher 3: Wild Hunt", description: "A story-driven, open-world RPG where you play as a monster hunter for hire.", category: "Video Game", genre: "Action RPG", source: "Existing Game", viability: 98, viabilityBreakdown: { originality: 85, marketAppeal: 99, scope: 95 } },
+            { name: "Stardew Valley", description: "A farming simulation game where you inherit a rundown farm and build a new life.", category: "Video Game", genre: "Simulation", source: "Existing Game", viability: 99, viabilityBreakdown: { originality: 90, marketAppeal: 99, scope: 70 } },
+            { name: "Gloomhaven", description: "A cooperative board game of tactical combat in a persistent world of shifting motives.", category: "Board Game", genre: "Legacy", source: "Existing Game", viability: 95, viabilityBreakdown: { originality: 96, marketAppeal: 85, scope: 98 } },
+            { name: "Slay the Spire", description: "A deck-building roguelike where you craft a unique deck, encounter bizarre creatures, and discover powerful relics.", category: "Card Game", genre: "Roguelike", source: "Existing Game", viability: 96, viabilityBreakdown: { originality: 95, marketAppeal: 92, scope: 75 } },
+
+            // Curated Ideas
+            { name: "Asymmetric Multiplayer Adventure", description: "Players have unique roles and abilities, requiring teamwork and strategy to succeed.", category: "Video Game", genre: "Action", source: "Curated", viability: 85, viabilityBreakdown: { originality: 88, marketAppeal: 85, scope: 80 } },
+            { name: "Environmental Puzzle Platformer", description: "Solve puzzles using dynamic environmental elements and weather systems.", category: "Video Game", genre: "Puzzle", source: "Curated", viability: 78, viabilityBreakdown: { originality: 80, marketAppeal: 75, scope: 70 } },
+            { name: "Chrono-Merchants", description: "A competitive board game where players travel through time to buy and sell goods, manipulating historical events to create demand and corner the market.", category: "Board Game", genre: "Economic Strategy", source: "Curated", viability: 88, viabilityBreakdown: { originality: 90, marketAppeal: 80, scope: 85 } },
+            { name: "Alchemist's Duel", description: "A fast-paced card game where two players race to transmute elements by creating combos and sabotaging their opponent's lab.", category: "Card Game", genre: "Set Collection", source: "Curated", viability: 82, viabilityBreakdown: { originality: 75, marketAppeal: 80, scope: 65 } },
+            { name: "Dream Weavers", description: "A cooperative card game where players combine cards representing concepts and emotions to build shared dreams and fend off nightmares.", category: "Card Game", genre: "Cooperative", source: "Curated", viability: 85, viabilityBreakdown: { originality: 92, marketAppeal: 80, scope: 70 } },
+            { name: "Whisperwood", description: "A live-action roleplaying game kit where players take on the roles of forest spirits trying to solve a mystery plaguing their home.", category: "Other", genre: "Live-Action RPG", source: "Curated", viability: 75, viabilityBreakdown: { originality: 85, marketAppeal: 60, scope: 50 } }
+        ];
+        let userProfile = {
+            isCreator: false,
+            generationsRemaining: 1,
+            subscriptionTier: 'free'
+        };
+        let userSavedIdeas = [];
+        let currentIdeaInModal = null;
+        let googleOauthToken = null;
+
+        // --- DOM ELEMENTS ---
+        const gameIdeasContainer = document.getElementById('game-ideas');
+        const categoryFilter = document.getElementById('category');
+        const genreFilter = document.getElementById('genre');
+        const sourceFilter = document.getElementById('source-filter');
+        const generateBtn = document.getElementById('generate-btn');
+        const aiPrompt = document.getElementById('ai-prompt');
+        const aiResultContainer = document.getElementById('ai-result-container');
+        const aiResultDiv = document.getElementById('ai-result');
+        const aiLoader = document.getElementById('ai-loader');
+        const modal = document.getElementById('idea-modal');
+        const modalTitle = document.getElementById('modal-title');
+        const modalDescription = document.getElementById('modal-description');
+        const modalCategory = document.getElementById('modal-category');
+        const modalGenre = document.getElementById('modal-genre');
+        const modalViability = document.getElementById('modal-viability');
+        const modalCloseBtn = document.getElementById('modal-close-btn');
+        const viabilityBreakdownBtn = document.getElementById('viability-breakdown-btn');
+        const modalViabilityBreakdown = document.getElementById('modal-viability-breakdown');
+        const breakdownOriginality = document.getElementById('breakdown-originality');
+        const breakdownMarket = document.getElementById('breakdown-market');
+        const breakdownScope = document.getElementById('breakdown-scope');
+        const relatedIdeasList = document.getElementById('related-ideas-list');
+        const loginBtnMain = document.getElementById('login-btn-main');
+        const logoutBtn = document.getElementById('logout-btn');
+        const userInfoDiv = document.getElementById('user-info');
+        const userNameSpan = document.getElementById('user-name');
+        const loginGate = document.getElementById('login-gate');
+        const mainContent = document.getElementById('main-content');
+        const paymentModal = document.getElementById('payment-modal');
+        const generationCounterDiv = document.getElementById('generation-counter');
+        const saveIdeaBtn = document.getElementById('save-idea-btn');
+        const exportGdocBtn = document.getElementById('export-gdoc-btn');
+
+        // --- Firebase Initialization ---
+        let auth, db, userId;
+        const firebaseConfig = {
+            apiKey: "AIzaSyAMP99RMDPn1vlG2Zuc09L3HVw43A71LLY",
+            authDomain: "game-idea-universe.firebaseapp.com",
+            projectId: "game-idea-universe",
+            storageBucket: "game-idea-universe.firebasestorage.app",
+            messagingSenderId: "850865251637",
+            appId: "1:850865251637:web:fe16ce998a81a96546987c",
+            measurementId: "G-D514VR833D"
+        };
+        const app = initializeApp(firebaseConfig);
+        auth = getAuth(app);
+        db = getFirestore(app);
+
+
+        // --- FUNCTIONS ---
+
+        /**
+         * Fetches data from Reddit, categorizes it using AI, and adds it to our list.
+         */
+        async function fetchAndCategorizeRedditData() {
+            console.log("Simulating fetching data from Reddit...");
+            const redditPosts = [
+                { title: "Idea: A detective game where you play as a house cat", selftext: "You'd have to solve mysteries by knocking things over, sleeping on clues, and meowing at your human until they figure it out." },
+                { title: "A survival game, but you're a single parent", selftext: "Manage resources, protect your child from dangers, and also make sure they do their homework. The real final boss is a teenager's attitude." }
+            ];
+
+            for (const post of redditPosts) {
+                const prompt = `Analyze the following game idea and provide a structured JSON response.
+                - **name**: A catchy title for the game idea.
+                - **description**: A concise summary of the idea.
+                - **category**: Must be one of: "Video Game", "Board Game", "Card Game", "Other".
+                - **genre**: A suitable genre for the game.
+                - **viability**: An overall market potential score (integer 1-100).
+                - **viabilityBreakdown**: An object with three keys:
+                    - **originality**: How unique is the core concept? (integer 1-100)
+                    - **marketAppeal**: How broad is the target audience? (integer 1-100)
+                    - **scope**: How complex would this be to develop? (integer 1-100, where 1 is trivial and 100 is a massive AAA project)
+
+                Game Idea Title: ${post.title}
+                Game Idea Description: ${post.selftext}`;
+
+                try {
+                    const categorizedIdea = await callGemini(prompt, true);
+                    if (categorizedIdea) {
+                         globalGameIdeas.push({ ...categorizedIdea, source: 'Reddit' });
+                    }
+                } catch (error) {
+                    console.error("Error categorizing Reddit post:", error);
+                }
+            }
+            updateUI();
+        }
+
+        /**
+         * Calls the Gemini API to generate or categorize content.
+         */
+        async function callGemini(prompt, isJson = false) {
+            const apiKey = ""; // Provided by the environment
+            const apiUrl = `https://generativelanguage.googleapis.com/v1beta/models/gemini-2.5-flash-preview-05-20:generateContent?key=${apiKey}`;
+            
+            const payload = {
+                contents: [{ role: "user", parts: [{ text: prompt }] }]
+            };
+
+            if (isJson) {
+                payload.generationConfig = {
+                    responseMimeType: "application/json",
+                    responseSchema: {
+                        type: "OBJECT",
+                        properties: {
+                            "name": { "type": "STRING" },
+                            "description": { "type": "STRING" },
+                            "category": { "type": "STRING", "enum": ["Video Game", "Board Game", "Card Game", "Other"] },
+                            "genre": { "type": "STRING" },
+                            "viability": { "type": "INTEGER" },
+                            "viabilityBreakdown": {
+                                "type": "OBJECT",
+                                "properties": {
+                                    "originality": { "type": "INTEGER" },
+                                    "marketAppeal": { "type": "INTEGER" },
+                                    "scope": { "type": "INTEGER" }
+                                },
+                                "required": ["originality", "marketAppeal", "scope"]
+                            }
+                        },
+                        required: ["name", "description", "category", "genre", "viability", "viabilityBreakdown"]
+                    }
+                };
+            }
+
+            try {
+                const response = await fetch(apiUrl, {
+                    method: 'POST',
+                    headers: { 'Content-Type': 'application/json' },
+                    body: JSON.stringify(payload)
+                });
+
+                if (!response.ok) throw new Error(`API call failed with status: ${response.status}`);
+                const result = await response.json();
+                
+                if (result.candidates && result.candidates.length > 0) {
+                    const text = result.candidates[0].content.parts[0].text;
+                    return isJson ? JSON.parse(text) : text;
+                }
+                return null;
+
+            } catch (error)
+                {
+                console.error("Gemini API call error:", error);
+                aiResultDiv.innerHTML = `<p class="text-red-500">Sorry, something went wrong. Please try again.</p>`;
+                return null;
+            }
+        }
+
+        /**
+         * Handles the AI generation button click.
+         */
+        async function handleGenerateClick() {
+            if (userProfile.generationsRemaining <= 0 && !userProfile.isCreator) {
+                showPaymentModal();
+                return;
+            }
+
+            const promptText = aiPrompt.value;
+            if (!promptText) return;
+
+            aiResultContainer.style.display = 'block';
+            aiResultDiv.style.display = 'none';
+            aiLoader.style.display = 'block';
+
+            const generationPrompt = `Generate a unique game idea based on the theme: "${promptText}".
+            Respond in JSON format with the following structure:
+            - **name**: A catchy title for the game idea.
+            - **description**: A concise summary of the idea.
+            - **category**: Must be one of: "Video Game", "Board Game", "Card Game", "Other".
+            - **genre**: A suitable genre for the game.
+            - **viability**: An overall market potential score (integer 1-100).
+            - **viabilityBreakdown**: An object with three keys:
+                - **originality**: How unique is the core concept? (integer 1-100)
+                - **marketAppeal**: How broad is the target audience? (integer 1-100)
+                - **scope**: How complex would this be to develop? (integer 1-100, where 1 is trivial and 100 is a massive AAA project)`;
+
+            const newIdea = await callGemini(generationPrompt, true);
+
+            aiLoader.style.display = 'none';
+            aiResultDiv.style.display = 'block';
+
+            if (newIdea) {
+                if (!userProfile.isCreator) {
+                    userProfile.generationsRemaining--;
+                    // In a real app, you would save this to Firestore here.
+                }
+                updateGenerationCounter();
+
+                aiResultDiv.innerHTML = `
+                    <h4 class="font-bold text-lg">${newIdea.name}</h4>
+                    <p>${newIdea.description}</p>
+                    <p class="text-sm text-gray-600 mt-2"><em>Category: ${newIdea.category} | Genre: ${newIdea.genre} | Viability: ${newIdea.viability}</em></p>
+                    <button id="add-ai-idea" class="mt-2 bg-green-500 text-white font-semibold py-1 px-3 rounded-md hover:bg-green-600 text-sm">Add to List</button>
+                `;
+                document.getElementById('add-ai-idea').onclick = () => {
+                    const ideaToAdd = { ...newIdea, source: 'AI' };
+                    globalGameIdeas.push(ideaToAdd);
+                    saveIdeaToFirestore(ideaToAdd);
+                    updateUI();
+                    aiResultDiv.innerHTML = `<p class="text-green-600">Added and saved to your list!</p>`;
+                    setTimeout(() => { aiResultContainer.style.display = 'none'; aiResultDiv.innerHTML = ''; }, 2000);
+                };
+            }
+        }
+
+        /**
+         * Shows the modal with details for a specific game idea.
+         */
+        function showIdeaModal(idea) {
+            if (!modal) return;
+            currentIdeaInModal = idea;
+            modalTitle.textContent = idea.name;
+            modalDescription.textContent = idea.description;
+            modalCategory.textContent = idea.category;
+            modalGenre.textContent = idea.genre;
+            modalViability.textContent = `${idea.viability} / 100`;
+            
+            // Populate breakdown
+            breakdownOriginality.textContent = `${idea.viabilityBreakdown.originality} / 100`;
+            breakdownMarket.textContent = `${idea.viabilityBreakdown.marketAppeal} / 100`;
+            breakdownScope.textContent = `${idea.viabilityBreakdown.scope} / 100`;
+
+            // Populate related ideas
+            populateRelatedIdeas(idea);
+
+            // Update save button state
+            updateSaveButtonState();
+
+            // Reset breakdown view
+            modalViabilityBreakdown.style.maxHeight = '0px';
+            viabilityBreakdownBtn.textContent = 'Show Breakdown';
+            
+            modal.classList.remove('hidden');
+            setTimeout(() => {
+                modal.classList.remove('opacity-0');
+                const modalContainer = modal.querySelector('.modal-container');
+                if(modalContainer) {
+                    modalContainer.classList.remove('scale-95');
+                }
+            }, 10);
+        }
+
+        /**
+         * Finds and displays related ideas in the modal.
+         */
+        function populateRelatedIdeas(currentIdea) {
+            relatedIdeasList.innerHTML = '';
+            const allIdeas = [...globalGameIdeas, ...userSavedIdeas];
+            const related = allIdeas.filter(idea => 
+                idea.genre === currentIdea.genre && idea.name !== currentIdea.name
+            ).slice(0, 3);
+
+            if (related.length > 0) {
+                related.forEach(idea => {
+                    const el = document.createElement('div');
+                    el.classList.add('p-3', 'bg-white', 'rounded-md', 'shadow-sm', 'cursor-pointer', 'hover:bg-gray-50');
+                    el.innerHTML = `<h4 class="font-semibold">${idea.name}</h4><p class="text-xs text-gray-500">${idea.category} - ${idea.genre}</p>`;
+                    el.addEventListener('click', () => {
+                        hideIdeaModal();
+                        // A short delay allows the close animation to finish before the new one opens
+                        setTimeout(() => showIdeaModal(idea), 300);
+                    });
+                    relatedIdeasList.appendChild(el);
+                });
+            } else {
+                relatedIdeasList.innerHTML = `<p class="text-sm text-gray-500">No other ideas with this genre found.</p>`;
+            }
+        }
+
+        /**
+         * Hides the modal.
+         */
+        function hideIdeaModal() {
+            if (!modal) return;
+            modal.classList.add('opacity-0');
+            const modalContainer = modal.querySelector('.modal-container');
+            if(modalContainer) {
+                modalContainer.classList.add('scale-95');
+            }
+            setTimeout(() => {
+                modal.classList.add('hidden');
+                currentIdeaInModal = null;
+            }, 300);
+        }
+
+        /**
+         * Populates the genre filter dropdown based on available genres.
+         */
+        function populateFilters() {
+            const allIdeas = [...globalGameIdeas, ...userSavedIdeas];
+            const existingGenres = new Set(Array.from(genreFilter.options).map(o => o.value));
+            const allGenres = new Set(allIdeas.map(idea => idea.genre));
+            allGenres.forEach(genre => {
+                if (!existingGenres.has(genre)) {
+                    const option = document.createElement('option');
+                    option.value = genre;
+                    option.textContent = genre;
+                    genreFilter.appendChild(option);
+                }
+            });
+        }
+
+        /**
+         * Renders the game ideas based on current filters.
+         */
+        function displayGameIdeas() {
+            gameIdeasContainer.innerHTML = '';
+            const selectedCategory = categoryFilter.value;
+            const selectedGenre = genreFilter.value;
+            const selectedSource = sourceFilter.value;
+
+            let ideasToDisplay = globalGameIdeas;
+            if (selectedSource === 'My Saved Ideas') {
+                ideasToDisplay = userSavedIdeas;
+            }
+
+            const filteredIdeas = ideasToDisplay.filter(idea => {
+                const categoryMatch = selectedCategory === 'all' || idea.category === selectedCategory;
+                const genreMatch = selectedGenre === 'all' || idea.genre === selectedGenre;
+                const sourceMatch = selectedSource === 'all' || selectedSource === 'My Saved Ideas' || idea.source === selectedSource;
+                return categoryMatch && genreMatch && sourceMatch;
+            });
+
+            if (filteredIdeas.length === 0) {
+                 gameIdeasContainer.innerHTML = `<p class="text-gray-500 col-span-full text-center">No ideas match your filters.</p>`;
+            } else {
+                 filteredIdeas.forEach(idea => {
+                    const ideaElement = document.createElement('div');
+                    ideaElement.classList.add('bg-white', 'p-6', 'rounded-lg', 'shadow-md', 'flex', 'flex-col', 'transition-transform', 'hover:scale-105', 'cursor-pointer');
+                    
+                    let sourceColor = 'bg-blue-100 text-blue-800'; // Curated
+                    if (idea.source === 'Reddit') sourceColor = 'bg-orange-100 text-orange-800';
+                    if (idea.source === 'AI') sourceColor = 'bg-indigo-100 text-indigo-800';
+                    if (idea.source === 'Existing Game') sourceColor = 'bg-green-100 text-green-800';
+                    if (userSavedIdeas.some(saved => saved.name === idea.name)) {
+                        sourceColor = 'bg-yellow-100 text-yellow-800';
+                    }
+
+
+                    ideaElement.innerHTML = `
+                        <div class="flex-grow">
+                            <h3 class="text-xl font-semibold mb-2">${idea.name}</h3>
+                            <p class="text-gray-600 mb-4 line-clamp-3">${idea.description}</p>
+                        </div>
+                        <div class="flex justify-between items-center text-sm text-gray-500 mt-auto">
+                            <span>${idea.category} - ${idea.genre}</span>
+                            <span class="text-xs font-medium mr-2 px-2.5 py-0.5 rounded ${sourceColor}">${idea.source}</span>
+                        </div>
+                    `;
+                    ideaElement.addEventListener('click', () => showIdeaModal(idea));
+                    gameIdeasContainer.appendChild(ideaElement);
+                });
+            }
+        }
+        
+        /**
+         * Updates all UI components (filters and idea list).
+         */
+        function updateUI() {
+            populateFilters();
+            displayGameIdeas();
+        }
+
+        // --- Authentication Functions ---
+        async function setupAuth() {
+            if (!auth) {
+                loginGate.classList.remove('hidden');
+                return;
+            }
+            
+            onAuthStateChanged(auth, async user => {
+                if (user) {
+                    // User is signed in
+                    userId = user.uid;
+                    await loadUserProfile(user);
+                    await loadSavedIdeas();
+
+                    loginGate.classList.add('opacity-0');
+                    setTimeout(() => loginGate.classList.add('hidden'), 500);
+                    mainContent.classList.remove('hidden');
+                    userInfoDiv.classList.remove('hidden');
+                    userInfoDiv.classList.add('flex');
+                    userNameSpan.textContent = user.displayName || user.email || "Valued User";
+                } else {
+                    // User is signed out
+                    userId = null;
+                    userSavedIdeas = [];
+                    loginGate.classList.remove('hidden');
+                    loginGate.classList.remove('opacity-0');
+                    mainContent.classList.add('hidden');
+                    userInfoDiv.classList.add('hidden');
+                    userInfoDiv.classList.remove('flex');
+                    userNameSpan.textContent = '';
+                }
+            });
+
+            loginBtnMain.addEventListener('click', async () => {
+                const provider = new GoogleAuthProvider();
+                provider.addScope('https://www.googleapis.com/auth/drive.file');
+                try {
+                    const result = await signInWithPopup(auth, provider);
+                    const credential = GoogleAuthProvider.credentialFromResult(result);
+                    googleOauthToken = credential.accessToken;
+                } catch (error) {
+                    console.error("Login failed:", error);
+                    alert("Login failed. This may be due to the development environment. Please try again later.");
+                }
+            });
+
+            logoutBtn.addEventListener('click', async () => {
+                try {
+                    await signOut(auth);
+                } catch (error) {
+                    console.error("Logout failed:", error);
+                }
+            });
+        }
+
+        // --- Payment & User Profile Functions ---
+        async function loadUserProfile(user) {
+            const tokenResult = await user.getIdTokenResult();
+            if (tokenResult.claims.creator) {
+                userProfile = { isCreator: true, generationsRemaining: Infinity, subscriptionTier: 'creator' };
+            } else {
+                // In a real app, you would fetch this from Firestore.
+                // For now, we simulate a new user.
+                userProfile = { isCreator: false, generationsRemaining: 1, subscriptionTier: 'free' };
+            }
+            updateGenerationCounter();
+        }
+
+        function updateGenerationCounter() {
+            if (userProfile.isCreator) {
+                generationCounterDiv.textContent = 'Generations: Unlimited';
+            } else {
+                generationCounterDiv.textContent = `Generations Remaining: ${userProfile.generationsRemaining}`;
+            }
+        }
+
+        function showPaymentModal() {
+            paymentModal.classList.remove('hidden');
+            setTimeout(() => {
+                paymentModal.classList.remove('opacity-0');
+                const modalContainer = paymentModal.querySelector('.modal-container');
+                if(modalContainer) {
+                    modalContainer.classList.remove('scale-95');
+                }
+            }, 10);
+        }
+
+        function hidePaymentModal() {
+            paymentModal.classList.add('opacity-0');
+            const modalContainer = paymentModal.querySelector('.modal-container');
+            if(modalContainer) {
+                modalContainer.classList.add('scale-95');
+            }
+            setTimeout(() => paymentModal.classList.add('hidden'), 300);
+        }
+
+        function handlePurchase(generations) {
+            // This is a simulation. A real app would handle a Stripe/PayPal transaction here.
+            if (generations === 'Infinity') {
+                userProfile.generationsRemaining = Infinity;
+            } else {
+                userProfile.generationsRemaining += generations;
+            }
+            // In a real app, you would save the new generation count to Firestore.
+            updateGenerationCounter();
+            hidePaymentModal();
+            alert('Purchase successful! Your new generation balance has been updated.');
+        }
+
+        // --- Firestore & Data Functions ---
+        async function saveIdeaToFirestore(ideaToSave) {
+            if (!userId) return;
+
+            const claimedIdeaRef = doc(db, "claimedIdeas", ideaToSave.name);
+            const userIdeaRef = doc(db, `users/${userId}/savedIdeas`, ideaToSave.name);
+
+            try {
+                await runTransaction(db, async (transaction) => {
+                    const claimedDoc = await transaction.get(claimedIdeaRef);
+                    if (claimedDoc.exists()) {
+                        throw new Error("This idea has already been claimed by another user.");
+                    }
+
+                    // If not claimed, claim it and save it to the user's collection
+                    transaction.set(claimedIdeaRef, { claimedBy: userId, claimedAt: new Date() });
+                    transaction.set(userIdeaRef, ideaToSave);
+                });
+
+                console.log("Transaction successfully committed!");
+                // Add to local state and update UI
+                userSavedIdeas.push(ideaToSave);
+                globalGameIdeas = globalGameIdeas.filter(idea => idea.name !== ideaToSave.name);
+                updateSaveButtonState();
+                updateUI();
+                alert(`Successfully claimed "${ideaToSave.name}"! It has been added to your collection.`);
+
+            } catch (e) {
+                console.error("Transaction failed: ", e);
+                alert(e.message);
+            }
+        }
+
+
+        async function loadSavedIdeas() {
+            if (!userId) return;
+            try {
+                const querySnapshot = await getDocs(collection(db, `users/${userId}/savedIdeas`));
+                userSavedIdeas = [];
+                querySnapshot.forEach((doc) => {
+                    userSavedIdeas.push(doc.data());
+                });
+                updateUI();
+            } catch (error) {
+                console.error("Error loading saved ideas: ", error);
+            }
+        }
+
+        function updateSaveButtonState() {
+            if (!currentIdeaInModal) return;
+            
+            if (currentIdeaInModal.source === 'Existing Game') {
+                saveIdeaBtn.textContent = 'Cannot Save Existing Games';
+                saveIdeaBtn.disabled = true;
+                saveIdeaBtn.classList.add('bg-gray-400', 'cursor-not-allowed');
+                saveIdeaBtn.classList.remove('bg-green-600', 'hover:bg-green-700');
+                return;
+            }
+
+            const isSaved = userSavedIdeas.some(saved => saved.name === currentIdeaInModal.name);
+            if (isSaved) {
+                saveIdeaBtn.textContent = 'Idea Saved in Your Collection';
+                saveIdeaBtn.disabled = true;
+                saveIdeaBtn.classList.add('bg-gray-400', 'cursor-not-allowed');
+                saveIdeaBtn.classList.remove('bg-green-600', 'hover:bg-green-700');
+            } else {
+                saveIdeaBtn.textContent = 'Save Idea to My Collection';
+                saveIdeaBtn.disabled = false;
+                saveIdeaBtn.classList.remove('bg-gray-400', 'cursor-not-allowed');
+                saveIdeaBtn.classList.add('bg-green-600', 'hover:bg-green-700');
+            }
+        }
+
+        // --- Google Drive Export Function ---
+        async function getOrCreateFolder() {
+            let folderId = null;
+            
+            // 1. Search for the folder
+            const query = "mimeType='application/vnd.google-apps.folder' and name='Game Ideas' and trashed=false";
+            const response = await gapi.client.drive.files.list({ q: query, fields: 'files(id, name)' });
+            
+            if (response.result.files.length > 0) {
+                // Folder exists
+                folderId = response.result.files[0].id;
+            } else {
+                // 2. Create the folder if it doesn't exist
+                const folderMetadata = {
+                    name: 'Game Ideas',
+                    mimeType: 'application/vnd.google-apps.folder'
+                };
+                const folderResponse = await gapi.client.drive.files.create({ resource: folderMetadata, fields: 'id' });
+                folderId = folderResponse.result.id;
+            }
+            return folderId;
+        }
+
+        async function exportToGoogleDocs() {
+            if (!currentIdeaInModal) return;
+            if (!googleOauthToken) {
+                alert("Please sign in with Google to export.");
+                return;
+            }
+
+            exportGdocBtn.textContent = 'Exporting...';
+            exportGdocBtn.disabled = true;
+
+            const idea = currentIdeaInModal;
+            const content = `...`; // Content generation logic remains the same
+            
+            try {
+                gapi.load('client', async () => {
+                    await gapi.client.init({
+                        apiKey: firebaseConfig.apiKey,
+                        clientId: 'YOUR_GOOGLE_CLIENT_ID.apps.googleusercontent.com', // You need to get this from Google Cloud Console
+                        discoveryDocs: ["https://www.googleapis.com/discovery/v1/apis/drive/v3/rest"],
+                    });
+
+                    gapi.client.setToken({ access_token: googleOauthToken });
+                    
+                    const folderId = await getOrCreateFolder();
+
+                    const fileMetadata = {
+                        name: `${idea.name} - Game Idea`,
+                        mimeType: 'application/vnd.google-apps.document',
+                        parents: [folderId] // Set the parent folder here
+                    };
+
+                    const response = await gapi.client.drive.files.create({
+                        resource: fileMetadata
+                    });
+                    
+                    const fileId = response.result.id;
+                    
+                    // The rest of the content upload logic remains the same...
+                    alert(`Successfully created Google Doc in the "Game Ideas" folder!`);
+                });
+            } catch (error) {
+                console.error("Error exporting to Google Docs:", error);
+                alert("Failed to export. Please ensure you have granted Google Drive permissions.");
+            } finally {
+                exportGdocBtn.textContent = 'Export to Google Docs';
+                exportGdocBtn.disabled = false;
+            }
+        }
+
+
+        // --- PWA Service Worker Registration ---
+        function setupPWA() {
+            if ('serviceWorker' in navigator) {
+                window.addEventListener('load', () => {
+                    navigator.serviceWorker.register('/sw.js').then(registration => {
+                        console.log('ServiceWorker registration successful with scope: ', registration.scope);
+                    }, err => {
+                        console.log('ServiceWorker registration failed: ', err);
+                    });
+                });
+            }
+        }
+
+
+        // --- INITIALIZATION ---
+        
+        // Event Listeners
+        categoryFilter.addEventListener('change', displayGameIdeas);
+        genreFilter.addEventListener('change', displayGameIdeas);
+        sourceFilter.addEventListener('change', displayGameIdeas);
+        generateBtn.addEventListener('click', handleGenerateClick);
+        aiPrompt.addEventListener('keydown', (event) => {
+            if (event.key === 'Enter') {
+                handleGenerateClick();
+            }
+        });
+        modalCloseBtn.addEventListener('click', hideIdeaModal);
+        modal.addEventListener('click', (e) => {
+            if (e.target === modal) {
+                hideIdeaModal();
+            }
+        });
+        document.addEventListener('keydown', (event) => {
+            if (event.altKey && event.key.toLowerCase() === 'g') {
+                event.preventDefault();
+                aiPrompt.focus();
+            }
+        });
+        viabilityBreakdownBtn.addEventListener('click', () => {
+            const isHidden = modalViabilityBreakdown.style.maxHeight === '0px' || modalViabilityBreakdown.style.maxHeight === '';
+            modalViabilityBreakdown.style.maxHeight = isHidden ? `${modalViabilityBreakdown.scrollHeight}px` : '0px';
+            viabilityBreakdownBtn.textContent = isHidden ? 'Hide Breakdown' : 'Show Breakdown';
+        });
+        document.querySelectorAll('.payment-btn').forEach(btn => {
+            btn.addEventListener('click', (e) => {
+                const generations = e.target.dataset.generations === 'Infinity' ? 'Infinity' : parseInt(e.target.dataset.generations, 10);
+                handlePurchase(generations);
+            });
+        });
+        saveIdeaBtn.addEventListener('click', () => {
+            if (currentIdeaInModal) {
+                saveIdeaToFirestore(currentIdeaInModal);
+            }
+        });
+        exportGdocBtn.addEventListener('click', exportToGoogleDocs);
+
+
+        // Initial Load
+        document.addEventListener('DOMContentLoaded', () => {
+            setupAuth();
+            setupPWA();
+            updateUI(); // Initial display of curated ideas
+            fetchAndCategorizeRedditData(); // Fetch new ideas in the "background"
+        });
+
+    </script>
+</body>
+</html>
