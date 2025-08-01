@@ -1,5 +1,5 @@
 <!DOCTYPE html>
-<html lang="en">
+<html lang="en" class="light">
 <head>
     <meta charset="UTF-8">
     <meta name="viewport" content="width=device-width, initial-scale=1.0">
@@ -40,9 +40,6 @@
             overflow: hidden;
             transition: max-height 0.5s ease-in-out;
         }
-        .login-gate {
-            transition: opacity 0.5s ease-in-out;
-        }
         .plan-card {
             transition: transform 0.2s ease-in-out, box-shadow 0.2s ease-in-out;
         }
@@ -50,41 +47,67 @@
             transform: translateY(-5px);
             box-shadow: 0 10px 15px -3px rgba(0, 0, 0, 0.1), 0 4px 6px -2px rgba(0, 0, 0, 0.05);
         }
+        /* Dark Mode styles */
+        .dark body { background-color: #111827; color: #d1d5db; }
+        .dark .bg-white { background-color: #1f2937; }
+        .dark .text-gray-900 { color: #f9fafb; }
+        .dark .text-gray-800 { color: #e5e7eb; }
+        .dark .text-gray-700 { color: #d1d5db; }
+        .dark .text-gray-600 { color: #9ca3af; }
+        .dark .text-gray-500 { color: #6b7280; }
+        .dark .border-gray-300 { border-color: #4b5563; }
+        .dark .bg-gray-50 { background-color: #374151; }
+        .dark .bg-indigo-50 { background-color: #3730a3; }
+        .dark .bg-yellow-100 { background-color: #4a2f0a; }
+        .dark .text-yellow-800 { color: #fef3c7; }
+        .dark .border-yellow-200 { border-color: #78350f; }
+        .dark select { background-color: #374151; }
     </style>
      <!-- Google reCAPTCHA -->
     <script src="https://www.google.com/recaptcha/api.js" async defer></script>
 </head>
 <body class="bg-gray-100 text-gray-800">
 
-    <!-- Login Gate -->
-    <div id="login-gate" class="login-gate fixed inset-0 bg-gray-100 flex items-center justify-center z-50">
-        <div class="text-center p-8 bg-white rounded-lg shadow-xl max-w-sm mx-auto">
-            <h1 class="text-3xl font-bold text-gray-900">Game Idea Universe</h1>
-            <p class="text-gray-600 mt-2 mb-6">Please verify you're not a robot to continue.</p>
-            <!-- Google reCAPTCHA -->
-            <div class="g-recaptcha my-4 flex justify-center" 
-                 data-sitekey="6Lea7ZUrAAAAADNomiJtEn309X5wWL5BUm3eRarH"
-                 data-callback="onRecaptchaSuccess">
-            </div>
-            <button id="login-btn-main" class="bg-indigo-600 text-white font-semibold py-3 px-6 rounded-md hover:bg-indigo-700 focus:outline-none focus:ring-2 focus:ring-offset-2 focus:ring-indigo-500 transition duration-150 ease-in-out opacity-50 cursor-not-allowed" disabled>
+    <!-- Login Modal (replaces gate) -->
+    <div id="login-modal" class="modal-overlay fixed inset-0 bg-black bg-opacity-60 flex items-center justify-center z-50 hidden opacity-0">
+        <div class="modal-container text-center p-8 bg-white rounded-lg shadow-xl max-w-sm mx-auto transform scale-95">
+            <h1 class="text-3xl font-bold text-gray-900">Welcome!</h1>
+            <p class="text-gray-600 mt-2 mb-6">Please sign in to unlock all features and save your ideas.</p>
+            <button id="login-btn-main" class="bg-indigo-600 text-white font-semibold py-3 px-6 rounded-md hover:bg-indigo-700 focus:outline-none focus:ring-2 focus:ring-offset-2 focus:ring-indigo-500 transition duration-150 ease-in-out">
+                Login with Google
+            </button>
+        </div>
+    </div>
+    
+    <!-- Sign Up to View Modal -->
+    <div id="signup-to-view-modal" class="modal-overlay fixed inset-0 bg-black bg-opacity-60 flex items-center justify-center z-50 hidden opacity-0">
+        <div class="modal-container text-center p-8 bg-white rounded-lg shadow-xl max-w-sm mx-auto transform scale-95">
+            <h1 class="text-3xl font-bold text-gray-900">Idea Generated!</h1>
+            <p class="text-gray-600 mt-2 mb-6">Your new game idea is ready. Sign up or log in to view, save, and claim it!</p>
+            <button id="login-btn-signup" class="bg-indigo-600 text-white font-semibold py-3 px-6 rounded-md hover:bg-indigo-700 focus:outline-none focus:ring-2 focus:ring-offset-2 focus:ring-indigo-500 transition duration-150 ease-in-out">
                 Login with Google
             </button>
         </div>
     </div>
 
-    <div id="main-content" class="hidden">
+
+    <div id="main-content">
         <div class="container mx-auto p-4 sm:p-6 lg:p-8">
             <header class="text-center mb-8 relative">
                 <h1 class="text-4xl font-bold text-gray-900">Game Idea Universe</h1>
                 <p class="text-lg text-gray-600 mt-2">Discover, filter, and generate unique game ideas.</p>
                 
-                <!-- Auth Buttons -->
-                <div id="auth-container" class="absolute top-0 right-0">
+                <!-- Auth & Theme Toggle Container -->
+                <div class="absolute top-0 right-0 flex flex-col sm:flex-row items-center space-y-2 sm:space-y-0 sm:space-x-4">
                     <div id="user-info" class="hidden items-center">
                         <button id="my-collection-btn" class="text-sm font-medium text-indigo-600 hover:underline mr-4">My Collection</button>
                         <span id="user-name" class="mr-4 text-sm font-medium text-gray-700"></span>
                         <button id="logout-btn" class="text-sm text-gray-500 hover:text-gray-700 underline">Logout</button>
                     </div>
+                    <button id="theme-toggle" class="p-2 rounded-md bg-gray-200 dark:bg-gray-700 text-gray-800 dark:text-gray-200">
+                        <svg id="theme-icon-light" xmlns="http://www.w3.org/2000/svg" class="h-5 w-5" fill="none" viewBox="0 0 24 24" stroke="currentColor"><path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M12 3v1m0 16v1m9-9h-1M4 12H3m15.364 6.364l-.707-.707M6.343 6.343l-.707-.707m12.728 0l-.707.707M6.343 17.657l-.707.707M16 12a4 4 0 11-8 0 4 4 0 018 0z" /></svg>
+                        <svg id="theme-icon-dark" xmlns="http://www.w3.org/2000/svg" class="h-5 w-5 hidden" fill="none" viewBox="0 0 24 24" stroke="currentColor"><path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M20.354 15.354A9 9 0 018.646 3.646 9.003 9.003 0 0012 21a9.003 9.003 0 008.354-5.646z" /></svg>
+                    </button>
                 </div>
             </header>
 
@@ -92,7 +115,7 @@
             <div class="bg-white p-6 rounded-lg shadow-md mb-8">
                 <div class="flex justify-between items-center mb-4">
                     <h2 class="text-2xl font-semibold text-gray-800">AI Idea Generator</h2>
-                    <div id="generation-counter" class="text-sm font-medium text-gray-500"></div>
+                    <div id="generation-counter" class="text-lg font-semibold text-indigo-600"></div>
                 </div>
                 <p class="text-gray-600 mb-4">Have a specific theme in mind? Let our AI create a game idea for you. (Shortcut: Alt + G)</p>
                 <div class="flex flex-col sm:flex-row gap-4">
@@ -110,7 +133,6 @@
 
             <!-- Filters for Curated & Scraped Ideas -->
             <div class="bg-white p-6 rounded-lg shadow-md mb-8">
-                 <h2 class="text-2xl font-semibold mb-4 text-gray-800">Curated & Scraped Ideas</h2>
                 <div class="grid grid-cols-1 md:grid-cols-3 gap-6">
                     <div>
                         <label for="category" class="block text-sm font-medium text-gray-700 mb-2">Category</label>
@@ -137,7 +159,7 @@
                             <option value="Existing Game">Existing Game</option>
                             <option value="Curated">Curated</option>
                             <option value="Reddit">Reddit</option>
-                             <option value="AI">AI Generated</option>
+                             <option value="AI Generated">AI Generated</option>
                         </select>
                     </div>
                 </div>
@@ -195,6 +217,10 @@
                         </div>
                     </div>
                     
+                    <div id="claim-status-container" class="hidden mt-4 p-3 bg-yellow-50 border border-yellow-200 rounded-lg text-center">
+                        <p class="text-sm text-yellow-800">Claimed by: <span id="claimed-by-user" class="font-semibold"></span></p>
+                    </div>
+
                     <div class="mt-6 pt-6 border-t border-gray-200 space-y-3">
                          <button id="save-idea-btn" class="w-full bg-green-600 text-white font-semibold py-3 px-4 rounded-md hover:bg-green-700 transition">
                             Save Idea to My Collection
@@ -261,7 +287,7 @@
         import { getFunctions, httpsCallable } from "https://www.gstatic.com/firebasejs/11.6.1/firebase-functions.js";
 
         // --- DATA STORE ---
-        let globalGameIdeas = [
+        let baseGameIdeas = [
             // Existing Games
             { name: "The Witcher 3: Wild Hunt", description: "A story-driven, open-world RPG where you play as a monster hunter for hire.", category: "Video Game", genre: "Action RPG", source: "Existing Game", viability: 98, viabilityBreakdown: { originality: 85, marketAppeal: 99, scope: 95 } },
             { name: "Stardew Valley", description: "A farming simulation game where you inherit a rundown farm and build a new life.", category: "Video Game", genre: "Simulation", source: "Existing Game", viability: 99, viabilityBreakdown: { originality: 90, marketAppeal: 99, scope: 70 } },
@@ -276,14 +302,17 @@
             { name: "Dream Weavers", description: "A cooperative card game where players combine cards representing concepts and emotions to build shared dreams and fend off nightmares.", category: "Card Game", genre: "Cooperative", source: "Curated", viability: 85, viabilityBreakdown: { originality: 92, marketAppeal: 80, scope: 70 } },
             { name: "Whisperwood", description: "A live-action roleplaying game kit where players take on the roles of forest spirits trying to solve a mystery plaguing their home.", category: "Other", genre: "Live-Action RPG", source: "Curated", viability: 75, viabilityBreakdown: { originality: 85, marketAppeal: 60, scope: 50 } }
         ];
+        let globalGameIdeas = [];
         let userProfile = {
             isCreator: false,
             generationsRemaining: 1,
             subscriptionTier: 'free'
         };
         let userSavedIdeas = [];
+        let allClaimedIdeas = new Map();
         let currentIdeaInModal = null;
         let googleOauthToken = null;
+        let lastGeneratedIdea = null;
 
         // --- DOM ELEMENTS ---
         const gameIdeasContainer = document.getElementById('game-ideas');
@@ -312,13 +341,17 @@
         const logoutBtn = document.getElementById('logout-btn');
         const userInfoDiv = document.getElementById('user-info');
         const userNameSpan = document.getElementById('user-name');
-        const loginGate = document.getElementById('login-gate');
         const mainContent = document.getElementById('main-content');
         const paymentModal = document.getElementById('payment-modal');
         const generationCounterDiv = document.getElementById('generation-counter');
         const saveIdeaBtn = document.getElementById('save-idea-btn');
         const exportGdocBtn = document.getElementById('export-gdoc-btn');
         const myCollectionBtn = document.getElementById('my-collection-btn');
+        const claimStatusContainer = document.getElementById('claim-status-container');
+        const claimedByUserSpan = document.getElementById('claimed-by-user');
+        const loginModal = document.getElementById('login-modal');
+        const signupToViewModal = document.getElementById('signup-to-view-modal');
+        const loginBtnSignup = document.getElementById('login-btn-signup');
 
         // --- Firebase Initialization ---
         let auth, db, functions, userId;
@@ -343,12 +376,37 @@
         // --- FUNCTIONS ---
 
         /**
-         * Fetches data from Reddit, categorizes it using AI, and adds it to our list.
+         * Fetches the public list of game ideas from Firestore.
          */
-        async function fetchAndCategorizeRedditData() {
-            // This function is now a simulation and would be replaced by a backend process in a real app.
-            console.log("Simulating fetching and categorizing data...");
-            updateUI();
+        async function loadPublicIdeas() {
+            try {
+                // Load all claimed ideas first to know what to filter
+                const claimedSnapshot = await getDocs(collection(db, "claimedIdeas"));
+                allClaimedIdeas = new Map();
+                claimedSnapshot.forEach(doc => {
+                    allClaimedIdeas.set(doc.id, doc.data());
+                });
+
+                const publicSnapshot = await getDocs(collection(db, "publicIdeas"));
+                let publicIdeas = [];
+                publicSnapshot.forEach((doc) => {
+                    publicIdeas.push(doc.data());
+                });
+
+                // If the user is not the creator, filter out claimed ideas
+                if (!userProfile.isCreator) {
+                    publicIdeas = publicIdeas.filter(idea => !allClaimedIdeas.has(idea.name));
+                }
+
+                // Combine with the hardcoded base ideas
+                globalGameIdeas = [...baseGameIdeas, ...publicIdeas];
+                updateUI();
+
+            } catch (error) {
+                console.error("Error loading public ideas:", error);
+                globalGameIdeas = [...baseGameIdeas]; // Fallback to base ideas
+                updateUI();
+            }
         }
 
         /**
@@ -370,7 +428,11 @@
          * Handles the AI generation button click.
          */
         async function handleGenerateClick() {
-            if (userProfile.generationsRemaining <= 0 && !userProfile.isCreator) {
+            if (!userId && userProfile.generationsRemaining <= 0) {
+                 showModal(signupToViewModal);
+                 return;
+            }
+            if (userId && userProfile.generationsRemaining <= 0 && !userProfile.isCreator) {
                 showPaymentModal();
                 return;
             }
@@ -395,31 +457,38 @@
                 - **scope**: How complex would this be to develop? (integer 1-100, where 1 is trivial and 100 is a massive AAA project)`;
 
             const newIdea = await callSecureGenerator(generationPrompt);
+            lastGeneratedIdea = newIdea; // Store the generated idea temporarily
 
             aiLoader.style.display = 'none';
             aiResultDiv.style.display = 'block';
 
             if (newIdea) {
+                if (!userId) {
+                    showModal(signupToViewModal);
+                    aiResultDiv.innerHTML = `<p class="text-indigo-600 font-semibold">Your idea is ready! Log in to see it.</p>`;
+                    return;
+                }
+
                 if (!userProfile.isCreator) {
                     userProfile.generationsRemaining--;
-                    // In a real app, you would save this to Firestore here.
+                    await updateUserProfileInFirestore();
                 }
                 updateGenerationCounter();
+                
+                const ideaToAdd = { ...newIdea, source: 'AI Generated' };
+                const publicIdeaRef = doc(db, "publicIdeas", ideaToAdd.name);
+                await setDoc(publicIdeaRef, ideaToAdd);
+                
+                globalGameIdeas.push(ideaToAdd);
+                updateUI();
 
                 aiResultDiv.innerHTML = `
                     <h4 class="font-bold text-lg">${newIdea.name}</h4>
                     <p>${newIdea.description}</p>
                     <p class="text-sm text-gray-600 mt-2"><em>Category: ${newIdea.category} | Genre: ${newIdea.genre} | Viability: ${newIdea.viability}</em></p>
-                    <button id="add-ai-idea" class="mt-2 bg-green-500 text-white font-semibold py-1 px-3 rounded-md hover:bg-green-600 text-sm">Add to List</button>
+                    <p class="text-green-600 mt-2 font-semibold">Successfully generated and added to the public list!</p>
                 `;
-                document.getElementById('add-ai-idea').onclick = () => {
-                    const ideaToAdd = { ...newIdea, source: 'AI' };
-                    globalGameIdeas.push(ideaToAdd);
-                    saveIdeaToFirestore(ideaToAdd);
-                    updateUI();
-                    aiResultDiv.innerHTML = `<p class="text-green-600">Added and saved to your list!</p>`;
-                    setTimeout(() => { aiResultContainer.style.display = 'none'; aiResultDiv.innerHTML = ''; }, 2000);
-                };
+                 setTimeout(() => { aiResultContainer.style.display = 'none'; aiResultDiv.innerHTML = ''; }, 3000);
             }
         }
 
@@ -427,6 +496,10 @@
          * Shows the modal with details for a specific game idea.
          */
         function showIdeaModal(idea) {
+            if (!userId) {
+                showModal(loginModal);
+                return;
+            }
             if (!modal) return;
             currentIdeaInModal = idea;
             modalTitle.textContent = idea.name;
@@ -443,21 +516,21 @@
             // Populate related ideas
             populateRelatedIdeas(idea);
 
-            // Update save button state
+            // Update save button state and creator view
             updateSaveButtonState();
+            if (userProfile.isCreator && allClaimedIdeas.has(idea.name)) {
+                claimStatusContainer.classList.remove('hidden');
+                claimedByUserSpan.textContent = allClaimedIdeas.get(idea.name).claimedBy.substring(0, 8) + '...';
+            } else {
+                claimStatusContainer.classList.add('hidden');
+            }
+
 
             // Reset breakdown view
             modalViabilityBreakdown.style.maxHeight = '0px';
             viabilityBreakdownBtn.textContent = 'Show Breakdown';
             
-            modal.classList.remove('hidden');
-            setTimeout(() => {
-                modal.classList.remove('opacity-0');
-                const modalContainer = modal.querySelector('.modal-container');
-                if(modalContainer) {
-                    modalContainer.classList.remove('scale-95');
-                }
-            }, 10);
+            showModal(modal);
         }
 
         /**
@@ -476,7 +549,7 @@
                     el.classList.add('p-3', 'bg-white', 'rounded-md', 'shadow-sm', 'cursor-pointer', 'hover:bg-gray-50');
                     el.innerHTML = `<h4 class="font-semibold">${idea.name}</h4><p class="text-xs text-gray-500">${idea.category} - ${idea.genre}</p>`;
                     el.addEventListener('click', () => {
-                        hideIdeaModal();
+                        hideModal(modal);
                         // A short delay allows the close animation to finish before the new one opens
                         setTimeout(() => showIdeaModal(idea), 300);
                     });
@@ -487,19 +560,29 @@
             }
         }
 
-        /**
-         * Hides the modal.
-         */
-        function hideIdeaModal() {
-            if (!modal) return;
-            modal.classList.add('opacity-0');
-            const modalContainer = modal.querySelector('.modal-container');
-            if(modalContainer) {
+        function showModal(modalElement) {
+            modalElement.classList.remove('hidden');
+            setTimeout(() => {
+                modalElement.classList.remove('opacity-0');
+                const modalContainer = modalElement.querySelector('.modal-container');
+                if (modalContainer) {
+                    modalContainer.classList.remove('scale-95');
+                }
+            }, 10);
+        }
+
+        function hideModal(modalElement) {
+            if (!modalElement) return;
+            modalElement.classList.add('opacity-0');
+            const modalContainer = modalElement.querySelector('.modal-container');
+            if (modalContainer) {
                 modalContainer.classList.add('scale-95');
             }
             setTimeout(() => {
-                modal.classList.add('hidden');
-                currentIdeaInModal = null;
+                modalElement.classList.add('hidden');
+                if (modalElement === modal) {
+                    currentIdeaInModal = null;
+                }
             }, 300);
         }
 
@@ -525,12 +608,22 @@
          */
         function displayGameIdeas() {
             gameIdeasContainer.innerHTML = '';
+            if (!userId) {
+                gameIdeasContainer.classList.add('blur-sm', 'pointer-events-none');
+            } else {
+                gameIdeasContainer.classList.remove('blur-sm', 'pointer-events-none');
+            }
+
             const selectedCategory = categoryFilter.value;
             const selectedGenre = genreFilter.value;
             const selectedSource = sourceFilter.value;
 
             let ideasToDisplay = globalGameIdeas;
             if (selectedSource === 'My Saved Ideas') {
+                if (!userId) {
+                    showModal(loginModal);
+                    return;
+                }
                 ideasToDisplay = userSavedIdeas;
             }
 
@@ -550,10 +643,12 @@
                     
                     let sourceColor = 'bg-blue-100 text-blue-800'; // Curated
                     if (idea.source === 'Reddit') sourceColor = 'bg-orange-100 text-orange-800';
-                    if (idea.source === 'AI') sourceColor = 'bg-indigo-100 text-indigo-800';
+                    if (idea.source === 'AI Generated') sourceColor = 'bg-indigo-100 text-indigo-800';
                     if (idea.source === 'Existing Game') sourceColor = 'bg-green-100 text-green-800';
+                    
+                    let savedFlag = '';
                     if (userSavedIdeas.some(saved => saved.name === idea.name)) {
-                        sourceColor = 'bg-yellow-100 text-yellow-800';
+                        savedFlag = `<span class="text-xs font-medium mr-2 px-2.5 py-0.5 rounded bg-yellow-100 text-yellow-800">In My Collection</span>`;
                     }
 
 
@@ -564,7 +659,10 @@
                         </div>
                         <div class="flex justify-between items-center text-sm text-gray-500 mt-auto">
                             <span>${idea.category} - ${idea.genre}</span>
-                            <span class="text-xs font-medium mr-2 px-2.5 py-0.5 rounded ${sourceColor}">${idea.source}</span>
+                            <div class="flex items-center">
+                                ${savedFlag}
+                                <span class="text-xs font-medium px-2.5 py-0.5 rounded ${sourceColor}">${idea.source}</span>
+                            </div>
                         </div>
                     `;
                     ideaElement.addEventListener('click', () => showIdeaModal(idea));
@@ -592,10 +690,7 @@
 
         // --- Authentication Functions ---
         async function setupAuth() {
-            if (!auth) {
-                loginGate.classList.remove('hidden');
-                return;
-            }
+            if (!auth) return;
             
             onAuthStateChanged(auth, async user => {
                 if (user) {
@@ -603,20 +698,29 @@
                     userId = user.uid;
                     await loadUserProfile(user);
                     await loadSavedIdeas();
-
-                    loginGate.classList.add('opacity-0');
-                    setTimeout(() => loginGate.classList.add('hidden'), 500);
+                    await loadPublicIdeas();
+                    
+                    hideModal(loginModal);
+                    hideModal(signupToViewModal);
+                    
                     mainContent.classList.remove('hidden');
                     userInfoDiv.classList.remove('hidden');
                     userInfoDiv.classList.add('flex');
                     userNameSpan.textContent = user.displayName || user.email || "Valued User";
+
+                    if (lastGeneratedIdea) {
+                        handleGenerateClick(); // Re-trigger generation to show the result
+                        lastGeneratedIdea = null;
+                    }
+
                 } else {
                     // User is signed out
                     userId = null;
                     userSavedIdeas = [];
-                    loginGate.classList.remove('hidden');
-                    loginGate.classList.remove('opacity-0');
-                    mainContent.classList.add('hidden');
+                    globalGameIdeas = [...baseGameIdeas]; // Show base ideas when logged out
+                    updateUI();
+                    
+                    mainContent.classList.remove('hidden'); // Show main content but blurred
                     userInfoDiv.classList.add('hidden');
                     userInfoDiv.classList.remove('flex');
                     userNameSpan.textContent = '';
@@ -624,18 +728,12 @@
             });
 
             loginBtnMain.addEventListener('click', () => reauthenticateForDrive(true));
+            loginBtnSignup.addEventListener('click', () => reauthenticateForDrive(true));
+
 
             logoutBtn.addEventListener('click', async () => {
                 try {
                     await signOut(auth);
-                    // Explicitly reset the reCAPTCHA widget
-                    if (typeof grecaptcha !== 'undefined' && grecaptcha && grecaptcha.reset) {
-                    grecaptcha.reset();
-                    }
-                    // Re-disable the login button and apply disabled styles
-                    const loginBtn = document.getElementById('login-btn-main');
-                    loginBtn.disabled = true;
-                    loginBtn.classList.add('opacity-50', 'cursor-not-allowed');
                 } catch (error) {
                     console.error("Logout failed:", error);
                 }
@@ -665,12 +763,30 @@
             const tokenResult = await user.getIdTokenResult();
             if (tokenResult.claims.creator) {
                 userProfile = { isCreator: true, generationsRemaining: Infinity, subscriptionTier: 'creator' };
+                updateGenerationCounter();
+                return;
+            }
+
+            const userDocRef = doc(db, "users", user.uid);
+            const userDoc = await getDoc(userDocRef);
+
+            if (userDoc.exists()) {
+                userProfile = userDoc.data();
             } else {
-                // In a real app, you would fetch this from Firestore.
-                // For now, we simulate a new user.
+                // Create a new profile for a new user
                 userProfile = { isCreator: false, generationsRemaining: 1, subscriptionTier: 'free' };
+                await setDoc(userDocRef, userProfile);
             }
             updateGenerationCounter();
+        }
+        
+        async function updateUserProfileInFirestore() {
+            if (!userId) return;
+            const userDocRef = doc(db, "users", userId);
+            await updateDoc(userDocRef, {
+                generationsRemaining: userProfile.generationsRemaining,
+                subscriptionTier: userProfile.subscriptionTier
+            });
         }
 
         function updateGenerationCounter() {
@@ -682,33 +798,21 @@
         }
 
         function showPaymentModal() {
-            paymentModal.classList.remove('hidden');
-            setTimeout(() => {
-                paymentModal.classList.remove('opacity-0');
-                const modalContainer = paymentModal.querySelector('.modal-container');
-                if(modalContainer) {
-                    modalContainer.classList.remove('scale-95');
-                }
-            }, 10);
+            showModal(paymentModal);
         }
 
         function hidePaymentModal() {
-            paymentModal.classList.add('opacity-0');
-            const modalContainer = paymentModal.querySelector('.modal-container');
-            if(modalContainer) {
-                modalContainer.classList.add('scale-95');
-            }
-            setTimeout(() => paymentModal.classList.add('hidden'), 300);
+            hideModal(paymentModal);
         }
 
-        function handlePurchase(generations) {
+        async function handlePurchase(generations) {
             // This is a simulation. A real app would handle a Stripe/PayPal transaction here.
             if (generations === 'Infinity') {
                 userProfile.generationsRemaining = Infinity;
             } else {
                 userProfile.generationsRemaining += generations;
             }
-            // In a real app, you would save the new generation count to Firestore.
+            await updateUserProfileInFirestore();
             updateGenerationCounter();
             hidePaymentModal();
             alert('Purchase successful! Your new generation balance has been updated.');
@@ -736,7 +840,10 @@
                 console.log("Transaction successfully committed!");
                 // Add to local state and update UI
                 userSavedIdeas.push(ideaToSave);
-                globalGameIdeas = globalGameIdeas.filter(idea => idea.name !== ideaToSave.name);
+                if (!userProfile.isCreator) {
+                    globalGameIdeas = globalGameIdeas.filter(idea => idea.name !== ideaToSave.name);
+                }
+                allClaimedIdeas.set(ideaToSave.name, { claimedBy: userId });
                 updateSaveButtonState();
                 updateUI();
                 alert(`Successfully claimed "${ideaToSave.name}"! It has been added to your collection.`);
@@ -766,7 +873,7 @@
             if (!currentIdeaInModal) return;
             
             if (currentIdeaInModal.source === 'Existing Game') {
-                saveIdeaBtn.textContent = 'Cannot Save Existing Games';
+                saveIdeaBtn.textContent = 'Cannot Claim Existing Games';
                 saveIdeaBtn.disabled = true;
                 saveIdeaBtn.classList.add('bg-gray-400', 'cursor-not-allowed');
                 saveIdeaBtn.classList.remove('bg-green-600', 'hover:bg-green-700');
@@ -774,12 +881,20 @@
             }
 
             const isSaved = userSavedIdeas.some(saved => saved.name === currentIdeaInModal.name);
+            const isClaimedByAnyone = allClaimedIdeas.has(currentIdeaInModal.name);
+
             if (isSaved) {
                 saveIdeaBtn.textContent = 'Idea Saved in Your Collection';
                 saveIdeaBtn.disabled = true;
                 saveIdeaBtn.classList.add('bg-gray-400', 'cursor-not-allowed');
                 saveIdeaBtn.classList.remove('bg-green-600', 'hover:bg-green-700');
-            } else {
+            } else if (isClaimedByAnyone) {
+                saveIdeaBtn.textContent = 'Idea Already Claimed';
+                saveIdeaBtn.disabled = true;
+                saveIdeaBtn.classList.add('bg-gray-400', 'cursor-not-allowed');
+                saveIdeaBtn.classList.remove('bg-green-600', 'hover:bg-green-700');
+            }
+            else {
                 saveIdeaBtn.textContent = 'Save Idea to My Collection';
                 saveIdeaBtn.disabled = false;
                 saveIdeaBtn.classList.remove('bg-gray-400', 'cursor-not-allowed');
@@ -909,10 +1024,10 @@
                 handleGenerateClick();
             }
         });
-        modalCloseBtn.addEventListener('click', hideIdeaModal);
+        modalCloseBtn.addEventListener('click', () => hideModal(modal));
         modal.addEventListener('click', (e) => {
             if (e.target === modal) {
-                hideIdeaModal();
+                hideModal(modal);
             }
         });
         document.addEventListener('keydown', (event) => {
@@ -943,14 +1058,34 @@
             displayGameIdeas();
             gameIdeasContainer.scrollIntoView({ behavior: 'smooth' });
         });
+        themeToggle.addEventListener('click', () => {
+            const html = document.documentElement;
+            const isDark = html.classList.toggle('dark');
+            localStorage.setItem('theme', isDark ? 'dark' : 'light');
+            updateThemeIcons(isDark);
+        });
+
+        function updateThemeIcons(isDark) {
+            document.getElementById('theme-icon-light').classList.toggle('hidden', isDark);
+            document.getElementById('theme-icon-dark').classList.toggle('hidden', !isDark);
+        }
 
 
         // Initial Load
         document.addEventListener('DOMContentLoaded', () => {
+            const savedTheme = localStorage.getItem('theme') || 'light';
+            const html = document.documentElement;
+            if (savedTheme === 'dark') {
+                html.classList.add('dark');
+            } else {
+                html.classList.remove('dark');
+            }
+            updateThemeIcons(savedTheme === 'dark');
+
             setupAuth();
             setupPWA();
-            updateUI(); // Initial display of curated ideas
-            fetchAndCategorizeRedditData(); // Fetch new ideas in the "background"
+            // We no longer call the simulated reddit fetcher here.
+            // Data is loaded from Firestore after authentication.
         });
 
     </script>
