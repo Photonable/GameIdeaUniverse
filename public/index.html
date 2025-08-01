@@ -73,10 +73,11 @@
 <body class="bg-gray-100 text-gray-800">
 
     <!-- Login Gate -->
-    <div id="login-gate" class="login-gate fixed inset-0 bg-gray-100 flex items-center justify-center z-50">
-        <div class="text-center p-8 bg-white rounded-lg shadow-xl max-w-sm mx-auto">
+    <div id="login-gate" class="login-gate fixed inset-0 bg-gray-100/80 dark:bg-gray-900/80 flex items-center justify-center z-50 hidden opacity-0">
+        <div class="text-center p-8 bg-white dark:bg-gray-800 rounded-lg shadow-xl max-w-sm mx-auto relative">
+            <button id="close-login-gate-btn" class="absolute top-2 right-3 text-gray-400 hover:text-gray-600 text-4xl leading-none">&times;</button>
             <h1 class="text-3xl font-bold text-gray-900">Game Idea Universe</h1>
-            <p class="text-gray-600 mt-2 mb-6">Please verify you're not a robot to continue.</p>
+            <p class="text-gray-600 mt-2 mb-6">Please log in to continue.</p>
             <!-- Google reCAPTCHA -->
             <div class="g-recaptcha my-4 flex justify-center" 
                  data-sitekey="6Lea7ZUrAAAAADNomiJtEn309X5wWL5BUm3eRarH"
@@ -88,7 +89,7 @@
         </div>
     </div>
 
-    <div id="main-content" class="hidden">
+    <div id="main-content">
         <div class="container mx-auto p-4 sm:p-6 lg:p-8">
             <header class="relative mb-8 flex flex-col md:flex-row md:items-center md:justify-between">
                 <div class="text-center md:text-left">
@@ -98,6 +99,7 @@
                 
                 <!-- Auth & Theme Toggle Container -->
                 <div class="mt-4 md:mt-0 flex items-center justify-center space-x-4">
+                    <button id="login-header-btn" class="hidden bg-indigo-600 text-white font-semibold py-2 px-4 rounded-md hover:bg-indigo-700">Login</button>
                     <div id="user-info" class="hidden items-center">
                         <button id="my-collection-btn" class="text-sm font-medium text-indigo-600 hover:underline mr-4">My Collection</button>
                         <span id="user-name" class="mr-4 text-sm font-medium text-gray-700"></span>
@@ -350,6 +352,8 @@
         const claimedByUserSpan = document.getElementById('claimed-by-user');
         const loginGate = document.getElementById('login-gate');
         const themeToggle = document.getElementById('theme-toggle');
+        const loginHeaderBtn = document.getElementById('login-header-btn');
+        const closeLoginGateBtn = document.getElementById('close-login-gate-btn');
 
         // --- Firebase Initialization ---
         let auth, db, functions, userId;
@@ -374,11 +378,28 @@
         // --- FUNCTIONS ---
 
         /**
+         * Shows the login gate and blurs the main content.
+         */
+        function showLoginGate() {
+            mainContent.classList.add('blur-sm', 'pointer-events-none');
+            loginGate.classList.remove('hidden');
+            setTimeout(() => loginGate.classList.remove('opacity-0'), 10);
+        }
+
+        /**
+         * Hides the login gate and un-blurs the main content.
+         */
+        function hideLoginGate() {
+            mainContent.classList.remove('blur-sm', 'pointer-events-none');
+            loginGate.classList.add('opacity-0');
+            setTimeout(() => loginGate.classList.add('hidden'), 500);
+        }
+        
+        /**
          * Fetches the public list of game ideas from Firestore.
          */
         async function loadPublicIdeas() {
             try {
-                // Load all claimed ideas first to know what to filter
                 const claimedSnapshot = await getDocs(collection(db, "claimedIdeas"));
                 allClaimedIdeas = new Map();
                 claimedSnapshot.forEach(doc => {
@@ -391,18 +412,16 @@
                     publicIdeas.push(doc.data());
                 });
 
-                // If the user is not the creator, filter out claimed ideas
                 if (!userProfile.isCreator) {
                     publicIdeas = publicIdeas.filter(idea => !allClaimedIdeas.has(idea.name));
                 }
 
-                // Combine with the hardcoded base ideas
                 globalGameIdeas = [...baseGameIdeas, ...publicIdeas];
                 updateUI();
 
             } catch (error) {
                 console.error("Error loading public ideas:", error);
-                globalGameIdeas = [...baseGameIdeas]; // Fallback to base ideas
+                globalGameIdeas = [...baseGameIdeas];
                 updateUI();
             }
         }
@@ -430,7 +449,7 @@
             if (!promptText) return;
 
             if (!userId) {
-                showModal(signupToViewModal);
+                showLoginGate();
                 return;
             }
             
@@ -456,7 +475,7 @@
                 - **scope**: How complex would this be to develop? (integer 1-100, where 1 is trivial and 100 is a massive AAA project)`;
 
             const newIdea = await callSecureGenerator(generationPrompt);
-            lastGeneratedIdea = newIdea; // Store the generated idea temporarily
+            lastGeneratedIdea = newIdea;
 
             aiLoader.style.display = 'none';
             
@@ -500,7 +519,7 @@
          */
         function showIdeaModal(idea) {
             if (!userId) {
-                showModal(loginModal);
+                showLoginGate();
                 return;
             }
             if (!modal) return;
@@ -511,15 +530,11 @@
             modalGenre.textContent = idea.genre;
             modalViability.textContent = `${idea.viability} / 100`;
             
-            // Populate breakdown
             breakdownOriginality.textContent = `${idea.viabilityBreakdown.originality} / 100`;
             breakdownMarket.textContent = `${idea.viabilityBreakdown.marketAppeal} / 100`;
             breakdownScope.textContent = `${idea.viabilityBreakdown.scope} / 100`;
 
-            // Populate related ideas
             populateRelatedIdeas(idea);
-
-            // Update save button state and creator view
             updateSaveButtonState();
             if (userProfile.isCreator && allClaimedIdeas.has(idea.name)) {
                 claimStatusContainer.classList.remove('hidden');
@@ -528,8 +543,6 @@
                 claimStatusContainer.classList.add('hidden');
             }
 
-
-            // Reset breakdown view
             modalViabilityBreakdown.style.maxHeight = '0px';
             viabilityBreakdownBtn.textContent = 'Show Breakdown';
             
@@ -553,7 +566,6 @@
                     el.innerHTML = `<h4 class="font-semibold">${idea.name}</h4><p class="text-xs text-gray-500">${idea.category} - ${idea.genre}</p>`;
                     el.addEventListener('click', () => {
                         hideModal(modal);
-                        // A short delay allows the close animation to finish before the new one opens
                         setTimeout(() => showIdeaModal(idea), 300);
                     });
                     relatedIdeasList.appendChild(el);
@@ -611,11 +623,6 @@
          */
         function displayGameIdeas() {
             gameIdeasContainer.innerHTML = '';
-            if (!userId) {
-                gameIdeasContainer.classList.add('blur-sm', 'pointer-events-none');
-            } else {
-                gameIdeasContainer.classList.remove('blur-sm', 'pointer-events-none');
-            }
 
             const selectedCategory = categoryFilter.value;
             const selectedGenre = genreFilter.value;
@@ -624,7 +631,8 @@
             let ideasToDisplay = globalGameIdeas;
             if (selectedSource === 'My Saved Ideas') {
                 if (!userId) {
-                    showModal(loginModal);
+                    showLoginGate();
+                    sourceFilter.value = 'all'; // Reset filter
                     return;
                 }
                 ideasToDisplay = userSavedIdeas;
@@ -654,20 +662,38 @@
                         savedFlag = `<span class="text-xs font-medium mr-2 px-2.5 py-0.5 rounded bg-yellow-100 text-yellow-800">In My Collection</span>`;
                     }
 
-
-                    ideaElement.innerHTML = `
-                        <div class="flex-grow">
+                    if (!userId) {
+                        // Guest view: Blur everything except the title
+                        ideaElement.innerHTML = `
                             <h3 class="text-xl font-semibold mb-2">${idea.name}</h3>
-                            <p class="text-gray-600 mb-4 line-clamp-3">${idea.description}</p>
-                        </div>
-                        <div class="flex justify-between items-center text-sm text-gray-500 mt-auto">
-                            <span>${idea.category} - ${idea.genre}</span>
-                            <div class="flex items-center">
-                                ${savedFlag}
-                                <span class="text-xs font-medium px-2.5 py-0.5 rounded ${sourceColor}">${idea.source}</span>
+                            <div class="flex-grow flex flex-col justify-between blur-sm">
+                                <p class="text-gray-600 mb-4 line-clamp-3">${idea.description}</p>
+                                <div class="flex justify-between items-center text-sm text-gray-500">
+                                    <span>${idea.category} - ${idea.genre}</span>
+                                    <div class="flex items-center">
+                                        ${savedFlag}
+                                        <span class="text-xs font-medium px-2.5 py-0.5 rounded ${sourceColor}">${idea.source}</span>
+                                    </div>
+                                </div>
                             </div>
-                        </div>
-                    `;
+                        `;
+                    } else {
+                        // Logged-in view: Normal card
+                        ideaElement.innerHTML = `
+                            <div class="flex-grow">
+                                <h3 class="text-xl font-semibold mb-2">${idea.name}</h3>
+                                <p class="text-gray-600 mb-4 line-clamp-3">${idea.description}</p>
+                            </div>
+                            <div class="flex justify-between items-center text-sm text-gray-500 mt-auto">
+                                <span>${idea.category} - ${idea.genre}</span>
+                                <div class="flex items-center">
+                                    ${savedFlag}
+                                    <span class="text-xs font-medium px-2.5 py-0.5 rounded ${sourceColor}">${idea.source}</span>
+                                </div>
+                            </div>
+                        `;
+                    }
+
                     ideaElement.addEventListener('click', () => showIdeaModal(idea));
                     gameIdeasContainer.appendChild(ideaElement);
                 });
@@ -688,7 +714,6 @@
             loginBtn.disabled = false;
             loginBtn.classList.remove('opacity-50', 'cursor-not-allowed');
         }
-        // Make onRecaptchaSuccess globally accessible
         window.onRecaptchaSuccess = onRecaptchaSuccess;
 
         // --- Authentication Functions ---
@@ -703,11 +728,11 @@
                     await loadSavedIdeas();
                     await loadPublicIdeas();
                     
-                    loginGate.classList.add('opacity-0');
-                    setTimeout(() => loginGate.classList.add('hidden'), 500);
+                    hideLoginGate();
                     mainContent.classList.remove('hidden');
                     userInfoDiv.classList.remove('hidden');
                     userInfoDiv.classList.add('flex');
+                    loginHeaderBtn.classList.add('hidden');
                     userNameSpan.textContent = user.displayName || user.email || "Valued User";
 
                     if (lastGeneratedIdea) {
@@ -719,21 +744,19 @@
                     // User is signed out
                     userId = null;
                     userSavedIdeas = [];
-                    globalGameIdeas = [...baseGameIdeas]; // Show base ideas when logged out
-                    updateUI();
+                    globalGameIdeas = [...baseGameIdeas];
                     
-                    loginGate.classList.remove('hidden');
-                    loginGate.classList.remove('opacity-0');
-                    mainContent.classList.add('hidden'); // Hide main content on logout
+                    mainContent.classList.remove('hidden');
                     userInfoDiv.classList.add('hidden');
                     userInfoDiv.classList.remove('flex');
+                    loginHeaderBtn.classList.remove('hidden');
                     userNameSpan.textContent = '';
+
+                    updateUI();
                 }
             });
 
             loginBtnMain.addEventListener('click', () => reauthenticateForDrive(true));
-
-
             logoutBtn.addEventListener('click', async () => {
                 try {
                     await signOut(auth);
@@ -751,7 +774,7 @@
                 const credential = GoogleAuthProvider.credentialFromResult(result);
                 googleOauthToken = credential.accessToken;
                 if (!isInitialLogin) {
-                    exportToGoogleDocs(); // Immediately try exporting again after getting the token
+                    exportToGoogleDocs();
                 }
                 return googleOauthToken;
             } catch (error) {
@@ -776,7 +799,6 @@
             if (userDoc.exists()) {
                 userProfile = userDoc.data();
             } else {
-                // Create a new profile for a new user
                 userProfile = { isCreator: false, generationsRemaining: 1, subscriptionTier: 'free' };
                 await setDoc(userDocRef, userProfile);
             }
@@ -813,7 +835,6 @@
         }
 
         async function handlePurchase(generations) {
-            // This is a simulation. A real app would handle a Stripe/PayPal transaction here.
             if (generations === 'Infinity') {
                 userProfile.generationsRemaining = Infinity;
             } else {
@@ -838,14 +859,11 @@
                     if (claimedDoc.exists()) {
                         throw new Error("This idea has already been claimed by another user.");
                     }
-
-                    // If not claimed, claim it and save it to the user's collection
                     transaction.set(claimedIdeaRef, { claimedBy: userId, claimedAt: new Date() });
                     transaction.set(userIdeaRef, ideaToSave);
                 });
 
                 console.log("Transaction successfully committed!");
-                // Add to local state and update UI
                 userSavedIdeas.push(ideaToSave);
                 if (!userProfile.isCreator) {
                     globalGameIdeas = globalGameIdeas.filter(idea => idea.name !== ideaToSave.name);
@@ -894,12 +912,10 @@
                 saveIdeaBtn.textContent = 'Idea Saved in Your Collection';
                 saveIdeaBtn.disabled = true;
                 saveIdeaBtn.classList.add('bg-gray-400', 'cursor-not-allowed');
-                saveIdeaBtn.classList.remove('bg-green-600', 'hover:bg-green-700');
             } else if (isClaimedByAnyone) {
                 saveIdeaBtn.textContent = 'Idea Already Claimed';
                 saveIdeaBtn.disabled = true;
                 saveIdeaBtn.classList.add('bg-gray-400', 'cursor-not-allowed');
-                saveIdeaBtn.classList.remove('bg-green-600', 'hover:bg-green-700');
             }
             else {
                 saveIdeaBtn.textContent = 'Save Idea to My Collection';
@@ -921,16 +937,10 @@
             if (data.files && data.files.length > 0) {
                 folderId = data.files[0].id;
             } else {
-                const folderMetadata = {
-                    name: 'Game Ideas',
-                    mimeType: 'application/vnd.google-apps.folder'
-                };
+                const folderMetadata = { name: 'Game Ideas', mimeType: 'application/vnd.google-apps.folder' };
                 const createResponse = await fetch("https://www.googleapis.com/drive/v3/files", {
                     method: 'POST',
-                    headers: {
-                        'Authorization': `Bearer ${token}`,
-                        'Content-Type': 'application/json'
-                    },
+                    headers: { 'Authorization': `Bearer ${token}`, 'Content-Type': 'application/json' },
                     body: JSON.stringify(folderMetadata)
                 });
                 const folderData = await createResponse.json();
@@ -960,8 +970,6 @@
             
             try {
                 const folderId = await getOrCreateFolder(token);
-
-                // NEW: Check for existing file
                 const fileQuery = `name='${docTitle}' and '${folderId}' in parents and trashed=false`;
                 const searchResponse = await fetch(`https://www.googleapis.com/drive/v3/files?q=${encodeURIComponent(fileQuery)}&fields=files(id)`, {
                     headers: { 'Authorization': `Bearer ${token}` }
@@ -970,29 +978,16 @@
 
                 if (searchData.files && searchData.files.length > 0) {
                     alert(`A document named "${docTitle}" already exists in your "Game Ideas" folder.`);
-                    return; // Stop the export
+                    return;
                 }
 
-                // If no file found, proceed with creation
-                const fileMetadata = {
-                    name: docTitle,
-                    mimeType: 'application/vnd.google-apps.document',
-                    parents: [folderId]
-                };
-
+                const fileMetadata = { name: docTitle, mimeType: 'application/vnd.google-apps.document', parents: [folderId] };
                 const createResponse = await fetch("https://www.googleapis.com/drive/v3/files", {
                     method: 'POST',
-                    headers: {
-                        'Authorization': `Bearer ${token}`,
-                        'Content-Type': 'application/json'
-                    },
+                    headers: { 'Authorization': `Bearer ${token}`, 'Content-Type': 'application/json' },
                     body: JSON.stringify(fileMetadata)
                 });
                 const fileData = await createResponse.json();
-                const fileId = fileData.id;
-                
-                // This part of the API is a bit tricky, it requires a multipart upload to set content.
-                // For this prototype, we'll just create the blank document. A full implementation would add the content here.
                 alert(`Successfully created blank Google Doc "${docTitle}" in the "Game Ideas" folder!`);
 
             } catch (error) {
@@ -1026,23 +1021,10 @@
         genreFilter.addEventListener('change', displayGameIdeas);
         sourceFilter.addEventListener('change', displayGameIdeas);
         generateBtn.addEventListener('click', handleGenerateClick);
-        aiPrompt.addEventListener('keydown', (event) => {
-            if (event.key === 'Enter') {
-                handleGenerateClick();
-            }
-        });
+        aiPrompt.addEventListener('keydown', (event) => { if (event.key === 'Enter') handleGenerateClick(); });
         modalCloseBtn.addEventListener('click', () => hideModal(modal));
-        modal.addEventListener('click', (e) => {
-            if (e.target === modal) {
-                hideModal(modal);
-            }
-        });
-        document.addEventListener('keydown', (event) => {
-            if (event.altKey && event.key.toLowerCase() === 'g') {
-                event.preventDefault();
-                aiPrompt.focus();
-            }
-        });
+        modal.addEventListener('click', (e) => { if (e.target === modal) hideModal(modal); });
+        document.addEventListener('keydown', (event) => { if (event.altKey && event.key.toLowerCase() === 'g') { event.preventDefault(); aiPrompt.focus(); } });
         viabilityBreakdownBtn.addEventListener('click', () => {
             const isHidden = modalViabilityBreakdown.style.maxHeight === '0px' || modalViabilityBreakdown.style.maxHeight === '';
             modalViabilityBreakdown.style.maxHeight = isHidden ? `${modalViabilityBreakdown.scrollHeight}px` : '0px';
@@ -1054,11 +1036,7 @@
                 handlePurchase(generations);
             });
         });
-        saveIdeaBtn.addEventListener('click', () => {
-            if (currentIdeaInModal) {
-                saveIdeaToFirestore(currentIdeaInModal);
-            }
-        });
+        saveIdeaBtn.addEventListener('click', () => { if (currentIdeaInModal) saveIdeaToFirestore(currentIdeaInModal); });
         exportGdocBtn.addEventListener('click', exportToGoogleDocs);
         myCollectionBtn.addEventListener('click', () => {
             sourceFilter.value = 'My Saved Ideas';
@@ -1071,6 +1049,10 @@
             localStorage.setItem('theme', isDark ? 'dark' : 'light');
             updateThemeIcons(isDark);
         });
+        loginHeaderBtn.addEventListener('click', showLoginGate);
+        closeLoginGateBtn.addEventListener('click', hideLoginGate);
+        loginGate.addEventListener('click', (e) => { if(e.target === loginGate) hideLoginGate(); });
+
 
         function updateThemeIcons(isDark) {
             document.getElementById('theme-icon-light').classList.toggle('hidden', isDark);
@@ -1082,17 +1064,11 @@
         document.addEventListener('DOMContentLoaded', () => {
             const savedTheme = localStorage.getItem('theme') || 'light';
             const html = document.documentElement;
-            if (savedTheme === 'dark') {
-                html.classList.add('dark');
-            } else {
-                html.classList.remove('dark');
-            }
+            if (savedTheme === 'dark') html.classList.add('dark');
+            else html.classList.remove('dark');
             updateThemeIcons(savedTheme === 'dark');
-
             setupAuth();
             setupPWA();
-            // We no longer call the simulated reddit fetcher here.
-            // Data is loaded from Firestore after authentication.
         });
 
     </script>
