@@ -4,13 +4,14 @@ const { GoogleGenerativeAI } = require("@google/generative-ai");
 
 admin.initializeApp();
 
-// Initialize the AI with your API key stored securely in environment variables
-const genAI = new GoogleGenerativeAI(functions.config().gemini.key);
-
 /**
  * A secure, callable function to generate game ideas using the Gemini API.
  */
 exports.generateIdea = functions.https.onCall(async (data, context) => {
+  // Lazily initialize the AI only when this function is called.
+  const genAI = new GoogleGenerativeAI(functions.config().gemini.key);
+
+  // Check if the user is authenticated
   if (!context.auth) {
     throw new functions.https.HttpsError("unauthenticated", "The function must be called while authenticated.");
   }
@@ -38,6 +39,8 @@ exports.generateIdea = functions.https.onCall(async (data, context) => {
 exports.scrapeAndCategorizeIdeas = functions.pubsub.schedule('every 24 hours').onRun(async (context) => {
     console.log('Running scheduled idea scraping...');
     const db = admin.firestore();
+    const genAI = new GoogleGenerativeAI(functions.config().gemini.key);
+
 
     // In a real app, this would fetch live data from an API like Reddit.
     const simulatedPosts = [
