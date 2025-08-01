@@ -29,7 +29,7 @@ exports.generateIdea = functions.https.onCall(async (data, context) => {
   }
 
   try {
-    const model = genAI.getGenerativeModel({ model: "gemini-1.0-pro" }); // Corrected model name
+    const model = genAI.getGenerativeModel({ model: "gemini-2.5-pro" }); // Corrected model name
     const result = await model.generateContent(prompt);
     const response = await result.response;
     const text = response.text();
