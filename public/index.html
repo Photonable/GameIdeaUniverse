@@ -40,6 +40,9 @@
             overflow: hidden;
             transition: max-height 0.5s ease-in-out;
         }
+        .login-gate {
+            transition: opacity 0.5s ease-in-out;
+        }
         .plan-card {
             transition: transform 0.2s ease-in-out, box-shadow 0.2s ease-in-out;
         }
@@ -57,48 +60,44 @@
         .dark .text-gray-500 { color: #6b7280; }
         .dark .border-gray-300 { border-color: #4b5563; }
         .dark .bg-gray-50 { background-color: #374151; }
+        .dark .bg-gray-200 { background-color: #4b5563; }
         .dark .bg-indigo-50 { background-color: #3730a3; }
         .dark .bg-yellow-100 { background-color: #4a2f0a; }
         .dark .text-yellow-800 { color: #fef3c7; }
         .dark .border-yellow-200 { border-color: #78350f; }
-        .dark select { background-color: #374151; }
+        .dark input, .dark select { background-color: #374151; color: #f9fafb; }
     </style>
      <!-- Google reCAPTCHA -->
     <script src="https://www.google.com/recaptcha/api.js" async defer></script>
 </head>
 <body class="bg-gray-100 text-gray-800">
 
-    <!-- Login Modal (replaces gate) -->
-    <div id="login-modal" class="modal-overlay fixed inset-0 bg-black bg-opacity-60 flex items-center justify-center z-50 hidden opacity-0">
-        <div class="modal-container text-center p-8 bg-white rounded-lg shadow-xl max-w-sm mx-auto transform scale-95">
-            <h1 class="text-3xl font-bold text-gray-900">Welcome!</h1>
-            <p class="text-gray-600 mt-2 mb-6">Please sign in to unlock all features and save your ideas.</p>
-            <button id="login-btn-main" class="bg-indigo-600 text-white font-semibold py-3 px-6 rounded-md hover:bg-indigo-700 focus:outline-none focus:ring-2 focus:ring-offset-2 focus:ring-indigo-500 transition duration-150 ease-in-out">
-                Login with Google
-            </button>
-        </div>
-    </div>
-    
-    <!-- Sign Up to View Modal -->
-    <div id="signup-to-view-modal" class="modal-overlay fixed inset-0 bg-black bg-opacity-60 flex items-center justify-center z-50 hidden opacity-0">
-        <div class="modal-container text-center p-8 bg-white rounded-lg shadow-xl max-w-sm mx-auto transform scale-95">
-            <h1 class="text-3xl font-bold text-gray-900">Idea Generated!</h1>
-            <p class="text-gray-600 mt-2 mb-6">Your new game idea is ready. Sign up or log in to view, save, and claim it!</p>
-            <button id="login-btn-signup" class="bg-indigo-600 text-white font-semibold py-3 px-6 rounded-md hover:bg-indigo-700 focus:outline-none focus:ring-2 focus:ring-offset-2 focus:ring-indigo-500 transition duration-150 ease-in-out">
+    <!-- Login Gate -->
+    <div id="login-gate" class="login-gate fixed inset-0 bg-gray-100 flex items-center justify-center z-50">
+        <div class="text-center p-8 bg-white rounded-lg shadow-xl max-w-sm mx-auto">
+            <h1 class="text-3xl font-bold text-gray-900">Game Idea Universe</h1>
+            <p class="text-gray-600 mt-2 mb-6">Please verify you're not a robot to continue.</p>
+            <!-- Google reCAPTCHA -->
+            <div class="g-recaptcha my-4 flex justify-center" 
+                 data-sitekey="6Lea7ZUrAAAAADNomiJtEn309X5wWL5BUm3eRarH"
+                 data-callback="onRecaptchaSuccess">
+            </div>
+            <button id="login-btn-main" class="bg-indigo-600 text-white font-semibold py-3 px-6 rounded-md hover:bg-indigo-700 focus:outline-none focus:ring-2 focus:ring-offset-2 focus:ring-indigo-500 transition duration-150 ease-in-out opacity-50 cursor-not-allowed" disabled>
                 Login with Google
             </button>
         </div>
     </div>
 
-
-    <div id="main-content">
+    <div id="main-content" class="hidden">
         <div class="container mx-auto p-4 sm:p-6 lg:p-8">
-            <header class="text-center mb-8 relative">
-                <h1 class="text-4xl font-bold text-gray-900">Game Idea Universe</h1>
-                <p class="text-lg text-gray-600 mt-2">Discover, filter, and generate unique game ideas.</p>
+            <header class="relative mb-8 flex flex-col md:flex-row md:items-center md:justify-between">
+                <div class="text-center md:text-left">
+                    <h1 class="text-4xl font-bold text-gray-900">Game Idea Universe</h1>
+                    <p class="text-lg text-gray-600 mt-2">Discover, filter, and generate unique game ideas.</p>
+                </div>
                 
                 <!-- Auth & Theme Toggle Container -->
-                <div class="absolute top-0 right-0 flex flex-col sm:flex-row items-center space-y-2 sm:space-y-0 sm:space-x-4">
+                <div class="mt-4 md:mt-0 flex items-center justify-center space-x-4">
                     <div id="user-info" class="hidden items-center">
                         <button id="my-collection-btn" class="text-sm font-medium text-indigo-600 hover:underline mr-4">My Collection</button>
                         <span id="user-name" class="mr-4 text-sm font-medium text-gray-700"></span>
@@ -349,9 +348,8 @@
         const myCollectionBtn = document.getElementById('my-collection-btn');
         const claimStatusContainer = document.getElementById('claim-status-container');
         const claimedByUserSpan = document.getElementById('claimed-by-user');
-        const loginModal = document.getElementById('login-modal');
-        const signupToViewModal = document.getElementById('signup-to-view-modal');
-        const loginBtnSignup = document.getElementById('login-btn-signup');
+        const loginGate = document.getElementById('login-gate');
+        const themeToggle = document.getElementById('theme-toggle');
 
         // --- Firebase Initialization ---
         let auth, db, functions, userId;
@@ -428,17 +426,18 @@
          * Handles the AI generation button click.
          */
         async function handleGenerateClick() {
-            if (!userId && userProfile.generationsRemaining <= 0) {
-                 showModal(signupToViewModal);
-                 return;
+            const promptText = aiPrompt.value;
+            if (!promptText) return;
+
+            if (!userId) {
+                showModal(signupToViewModal);
+                return;
             }
-            if (userId && userProfile.generationsRemaining <= 0 && !userProfile.isCreator) {
+            
+            if (userProfile.generationsRemaining <= 0 && !userProfile.isCreator) {
                 showPaymentModal();
                 return;
             }
-
-            const promptText = aiPrompt.value;
-            if (!promptText) return;
 
             aiResultContainer.style.display = 'block';
             aiResultDiv.style.display = 'none';
@@ -460,37 +459,41 @@
             lastGeneratedIdea = newIdea; // Store the generated idea temporarily
 
             aiLoader.style.display = 'none';
-            aiResultDiv.style.display = 'block';
-
+            
             if (newIdea) {
-                if (!userId) {
-                    showModal(signupToViewModal);
-                    aiResultDiv.innerHTML = `<p class="text-indigo-600 font-semibold">Your idea is ready! Log in to see it.</p>`;
-                    return;
-                }
-
-                if (!userProfile.isCreator) {
-                    userProfile.generationsRemaining--;
-                    await updateUserProfileInFirestore();
-                }
-                updateGenerationCounter();
-                
-                const ideaToAdd = { ...newIdea, source: 'AI Generated' };
-                const publicIdeaRef = doc(db, "publicIdeas", ideaToAdd.name);
-                await setDoc(publicIdeaRef, ideaToAdd);
-                
-                globalGameIdeas.push(ideaToAdd);
-                updateUI();
-
-                aiResultDiv.innerHTML = `
-                    <h4 class="font-bold text-lg">${newIdea.name}</h4>
-                    <p>${newIdea.description}</p>
-                    <p class="text-sm text-gray-600 mt-2"><em>Category: ${newIdea.category} | Genre: ${newIdea.genre} | Viability: ${newIdea.viability}</em></p>
-                    <p class="text-green-600 mt-2 font-semibold">Successfully generated and added to the public list!</p>
-                `;
-                 setTimeout(() => { aiResultContainer.style.display = 'none'; aiResultDiv.innerHTML = ''; }, 3000);
+                processAndDisplayGeneratedIdea(newIdea);
             }
         }
+        
+        async function processAndDisplayGeneratedIdea(idea) {
+            if (!idea) return;
+            
+            aiResultContainer.style.display = 'block';
+            aiResultDiv.style.display = 'block';
+            aiLoader.style.display = 'none';
+
+            if (!userProfile.isCreator) {
+                userProfile.generationsRemaining--;
+                await updateUserProfileInFirestore();
+            }
+            updateGenerationCounter();
+            
+            const ideaToAdd = { ...idea, source: 'AI Generated' };
+            const publicIdeaRef = doc(db, "publicIdeas", ideaToAdd.name);
+            await setDoc(publicIdeaRef, ideaToAdd);
+            
+            globalGameIdeas.push(ideaToAdd);
+            updateUI();
+
+            aiResultDiv.innerHTML = `
+                <h4 class="font-bold text-lg">${idea.name}</h4>
+                <p>${idea.description}</p>
+                <p class="text-sm text-gray-600 mt-2"><em>Category: ${idea.category} | Genre: ${idea.genre} | Viability: ${idea.viability}</em></p>
+                <p class="text-green-600 mt-2 font-semibold">Successfully generated and added to the public list!</p>
+            `;
+            setTimeout(() => { aiResultContainer.style.display = 'none'; aiResultDiv.innerHTML = ''; }, 3000);
+        }
+
 
         /**
          * Shows the modal with details for a specific game idea.
@@ -700,16 +703,15 @@
                     await loadSavedIdeas();
                     await loadPublicIdeas();
                     
-                    hideModal(loginModal);
-                    hideModal(signupToViewModal);
-                    
+                    loginGate.classList.add('opacity-0');
+                    setTimeout(() => loginGate.classList.add('hidden'), 500);
                     mainContent.classList.remove('hidden');
                     userInfoDiv.classList.remove('hidden');
                     userInfoDiv.classList.add('flex');
                     userNameSpan.textContent = user.displayName || user.email || "Valued User";
 
                     if (lastGeneratedIdea) {
-                        handleGenerateClick(); // Re-trigger generation to show the result
+                        processAndDisplayGeneratedIdea(lastGeneratedIdea);
                         lastGeneratedIdea = null;
                     }
 
@@ -720,7 +722,9 @@
                     globalGameIdeas = [...baseGameIdeas]; // Show base ideas when logged out
                     updateUI();
                     
-                    mainContent.classList.remove('hidden'); // Show main content but blurred
+                    loginGate.classList.remove('hidden');
+                    loginGate.classList.remove('opacity-0');
+                    mainContent.classList.add('hidden'); // Hide main content on logout
                     userInfoDiv.classList.add('hidden');
                     userInfoDiv.classList.remove('flex');
                     userNameSpan.textContent = '';
@@ -728,7 +732,6 @@
             });
 
             loginBtnMain.addEventListener('click', () => reauthenticateForDrive(true));
-            loginBtnSignup.addEventListener('click', () => reauthenticateForDrive(true));
 
 
             logoutBtn.addEventListener('click', async () => {
@@ -790,6 +793,10 @@
         }
 
         function updateGenerationCounter() {
+            if (!userId) {
+                generationCounterDiv.textContent = '';
+                return;
+            }
             if (userProfile.isCreator) {
                 generationCounterDiv.textContent = 'Generations: Unlimited';
             } else {
