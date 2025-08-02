@@ -285,7 +285,7 @@
         // --- Firebase Imports ---
         import { initializeApp } from "https://www.gstatic.com/firebasejs/11.6.1/firebase-app.js";
         import { getAuth, GoogleAuthProvider, signInWithPopup, onAuthStateChanged, signOut, getAdditionalUserInfo } from "https://www.gstatic.com/firebasejs/11.6.1/firebase-auth.js";
-        import { getFirestore, doc, setDoc, getDoc, updateDoc, collection, getDocs, writeBatch, runTransaction } from "https://www.gstatic.com/firebasejs/11.6.1/firebase-firestore.js";
+        import { getFirestore, doc, setDoc, getDoc, updateDoc, collection, getDocs, writeBatch, runTransaction, addDoc, onSnapshot } from "https://www.gstatic.com/firebasejs/11.6.1/firebase-firestore.js";
         import { getFunctions, httpsCallable } from "https://www.gstatic.com/firebasejs/11.6.1/firebase-functions.js";
 
         // --- DATA STORE ---
@@ -400,7 +400,6 @@
          */
         async function loadPublicIdeas() {
             try {
-                // Load all claimed ideas first to know what to filter
                 const claimedSnapshot = await getDocs(collection(db, "claimedIdeas"));
                 allClaimedIdeas = new Map();
                 claimedSnapshot.forEach(doc => {
@@ -413,22 +412,19 @@
                     publicIdeas.push(doc.data());
                 });
 
-                // If the user is not the creator, filter out ideas claimed by OTHER users
                 if (!userProfile.isCreator) {
                     publicIdeas = publicIdeas.filter(idea => {
                         const claimInfo = allClaimedIdeas.get(idea.name);
-                        // Keep the idea if it's not claimed, OR if it's claimed by the current user
                         return !claimInfo || claimInfo.claimedBy === userId;
                     });
                 }
 
-                // Combine with the hardcoded base ideas
                 globalGameIdeas = [...baseGameIdeas, ...publicIdeas];
                 updateUI();
 
             } catch (error) {
                 console.error("Error loading public ideas:", error);
-                globalGameIdeas = [...baseGameIdeas]; // Fallback to base ideas
+                globalGameIdeas = [...baseGameIdeas];
                 updateUI();
             }
         }
@@ -504,7 +500,6 @@
             
             globalGameIdeas.unshift(ideaToAdd);
             
-            // Display the new idea in its own card
             recentIdeaContainer.classList.remove('hidden');
             recentIdeaContainer.innerHTML = `
                 <div class="bg-white p-6 rounded-lg shadow-md">
@@ -720,10 +715,29 @@
         }
 
         // --- Recaptcha Functions ---
-        function onRecaptchaSuccess() {
+        async function onRecaptchaSuccess(token) {
             const loginBtn = document.getElementById('login-btn-main');
-            loginBtn.disabled = false;
-            loginBtn.classList.remove('opacity-50', 'cursor-not-allowed');
+            loginBtn.disabled = true;
+            loginBtn.classList.add('opacity-50', 'cursor-not-allowed');
+            loginBtn.textContent = 'Verifying...';
+
+            try {
+                const verifyRecaptcha = httpsCallable(functions, 'verifyRecaptcha');
+                const result = await verifyRecaptcha({ token: token });
+
+                if (result.data.success) {
+                    loginBtn.disabled = false;
+                    loginBtn.classList.remove('opacity-50', 'cursor-not-allowed');
+                    loginBtn.textContent = 'Login with Google';
+                } else {
+                    throw new Error("reCAPTCHA verification failed.");
+                }
+            } catch (error) {
+                console.error("reCAPTCHA verification error:", error);
+                alert("Failed to verify you're not a robot. Please try again.");
+                loginBtn.textContent = 'Login with Google';
+                grecaptcha.reset(); 
+            }
         }
         window.onRecaptchaSuccess = onRecaptchaSuccess;
 
@@ -844,12 +858,13 @@
         function hidePaymentModal() {
             hideModal(paymentModal);
         }
-
+        
         async function handlePurchase(generations) {
+            // This is a simulation. A real app would handle a Stripe/PayPal transaction here.
             if (generations === 'Infinity') {
                 userProfile.generationsRemaining = Infinity;
             } else {
-                userProfile.generationsRemaining += generations;
+                userProfile.generationsRemaining += parseInt(generations, 10);
             }
             await updateUserProfileInFirestore();
             updateGenerationCounter();
@@ -877,14 +892,13 @@
                 console.log("Transaction successfully committed!");
                 userSavedIdeas.push(ideaToSave);
                 
-                // Update the global list to reflect the claim, but only if the user is not a creator
                 if (!userProfile.isCreator) {
-                     await loadPublicIdeas(); // Reload public ideas to filter out the newly claimed one for others
+                     await loadPublicIdeas(); 
                 }
                 
                 allClaimedIdeas.set(ideaToSave.name, { claimedBy: userId });
                 updateSaveButtonState();
-                updateUI(); // This will now correctly show the claimed idea for the current user
+                updateUI();
                 alert(`Successfully claimed "${ideaToSave.name}"! It has been added to your collection.`);
 
             } catch (e) {
@@ -1046,12 +1060,14 @@
             modalViabilityBreakdown.style.maxHeight = isHidden ? `${modalViabilityBreakdown.scrollHeight}px` : '0px';
             viabilityBreakdownBtn.textContent = isHidden ? 'Hide Breakdown' : 'Show Breakdown';
         });
+        
         document.querySelectorAll('.payment-btn').forEach(btn => {
             btn.addEventListener('click', (e) => {
-                const generations = e.target.dataset.generations === 'Infinity' ? 'Infinity' : parseInt(e.target.dataset.generations, 10);
+                const generations = e.target.dataset.generations;
                 handlePurchase(generations);
             });
         });
+
         saveIdeaBtn.addEventListener('click', () => { if (currentIdeaInModal) saveIdeaToFirestore(currentIdeaInModal); });
         exportGdocBtn.addEventListener('click', exportToGoogleDocs);
         myCollectionBtn.addEventListener('click', () => {

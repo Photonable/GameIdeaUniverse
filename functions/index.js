@@ -1,6 +1,7 @@
 const functions = require("firebase-functions");
 const admin = require("firebase-admin");
 const { GoogleGenerativeAI } = require("@google/generative-ai");
+const axios = require("axios");
 
 admin.initializeApp();
 
@@ -31,6 +32,40 @@ exports.generateIdea = functions.https.onCall(async (data, context) => {
     throw new functions.https.HttpsError("internal", "Unable to generate idea. Please check server logs.");
   }
 });
+
+/**
+ * Verifies the reCAPTCHA response token from the client.
+ */
+exports.verifyRecaptcha = functions.https.onCall(async (data, context) => {
+  const token = data.token;
+  if (!token) {
+    throw new functions.https.HttpsError("invalid-argument", "The function must be called with a 'token' argument.");
+  }
+
+  // IMPORTANT: Set your secret key in your Firebase environment
+  // Use the command: firebase functions:config:set recaptcha.secret="YOUR_SECRET_KEY"
+  const secretKey = functions.config().recaptcha.secret;
+  if (!secretKey) {
+      console.error("reCAPTCHA secret key is not configured.");
+      throw new functions.https.HttpsError("failed-precondition", "The reCAPTCHA secret key is not configured.");
+  }
+
+  const verificationUrl = `https://www.google.com/recaptcha/api/siteverify?secret=${secretKey}&response=${token}`;
+
+  try {
+    const response = await axios.post(verificationUrl);
+    if (response.data.success) {
+      return { success: true };
+    } else {
+      console.error("reCAPTCHA verification failed:", response.data['error-codes']);
+      throw new functions.https.HttpsError("unauthenticated", "reCAPTCHA verification failed.", response.data['error-codes']);
+    }
+  } catch (error) {
+    console.error("Error calling reCAPTCHA verification API:", error);
+    throw new functions.https.HttpsError("internal", "Unable to verify reCAPTCHA. Please check server logs.");
+  }
+});
+
 
 /**
  * A scheduled function to scrape and categorize new game ideas.
