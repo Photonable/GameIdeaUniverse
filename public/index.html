@@ -125,12 +125,13 @@
                         Generate Idea
                     </button>
                 </div>
-                <div id="ai-result-container" class="mt-4 hidden">
-                     <div id="ai-loader" class="loader hidden"></div>
-                     <div id="ai-result" class="bg-indigo-50 p-4 rounded-md"></div>
-                </div>
+                <div id="ai-loader" class="loader hidden mt-4"></div>
             </div>
 
+            <!-- Recently Generated Idea -->
+            <div id="recent-idea-container" class="hidden mb-8">
+                <!-- Card content will be injected here by JS -->
+            </div>
 
             <!-- Filters for Curated & Scraped Ideas -->
             <div class="bg-white p-6 rounded-lg shadow-md mb-8">
@@ -238,11 +239,11 @@
 
     <!-- Payment Modal -->
     <div id="payment-modal" class="modal-overlay fixed inset-0 bg-black bg-opacity-50 flex items-center justify-center p-4 hidden opacity-0 z-50">
-        <div class="modal-container bg-white w-full max-w-4xl rounded-lg shadow-xl transform scale-95">
+        <div class="modal-container bg-white w-full max-w-4xl rounded-lg shadow-xl transform scale-95 overflow-y-auto max-h-[90vh]">
              <div class="p-8 text-center">
                 <h2 class="text-3xl font-bold text-gray-900">Choose Your Plan</h2>
                 <p class="text-gray-600 mt-2 mb-8">Your first generation is free! Choose a plan to continue creating.</p>
-                <div class="grid grid-cols-1 md:grid-cols-4 gap-6">
+                <div class="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-4 gap-6">
                     <!-- Pay per use -->
                     <div class="plan-card border-2 border-gray-200 p-6 rounded-lg">
                         <h3 class="text-xl font-semibold">Single Shot</h3>
@@ -322,8 +323,6 @@
         const sourceFilter = document.getElementById('source-filter');
         const generateBtn = document.getElementById('generate-btn');
         const aiPrompt = document.getElementById('ai-prompt');
-        const aiResultContainer = document.getElementById('ai-result-container');
-        const aiResultDiv = document.getElementById('ai-result');
         const aiLoader = document.getElementById('ai-loader');
         const modal = document.getElementById('idea-modal');
         const modalTitle = document.getElementById('modal-title');
@@ -354,6 +353,7 @@
         const themeToggle = document.getElementById('theme-toggle');
         const loginHeaderBtn = document.getElementById('login-header-btn');
         const closeLoginGateBtn = document.getElementById('close-login-gate-btn');
+        const recentIdeaContainer = document.getElementById('recent-idea-container');
 
         // --- Firebase Initialization ---
         let auth, db, functions, userId;
@@ -400,6 +400,7 @@
          */
         async function loadPublicIdeas() {
             try {
+                // Load all claimed ideas first to know what to filter
                 const claimedSnapshot = await getDocs(collection(db, "claimedIdeas"));
                 allClaimedIdeas = new Map();
                 claimedSnapshot.forEach(doc => {
@@ -412,16 +413,22 @@
                     publicIdeas.push(doc.data());
                 });
 
+                // If the user is not the creator, filter out ideas claimed by OTHER users
                 if (!userProfile.isCreator) {
-                    publicIdeas = publicIdeas.filter(idea => !allClaimedIdeas.has(idea.name));
+                    publicIdeas = publicIdeas.filter(idea => {
+                        const claimInfo = allClaimedIdeas.get(idea.name);
+                        // Keep the idea if it's not claimed, OR if it's claimed by the current user
+                        return !claimInfo || claimInfo.claimedBy === userId;
+                    });
                 }
 
+                // Combine with the hardcoded base ideas
                 globalGameIdeas = [...baseGameIdeas, ...publicIdeas];
                 updateUI();
 
             } catch (error) {
                 console.error("Error loading public ideas:", error);
-                globalGameIdeas = [...baseGameIdeas];
+                globalGameIdeas = [...baseGameIdeas]; // Fallback to base ideas
                 updateUI();
             }
         }
@@ -436,7 +443,7 @@
                 return result.data;
             } catch (error) {
                 console.error("Cloud Function error:", error);
-                aiResultDiv.innerHTML = `<p class="text-red-500">Sorry, the AI generator failed. Please try again later.</p>`;
+                alert("Sorry, the AI generator failed. Please try again later.");
                 return null;
             }
         }
@@ -458,8 +465,6 @@
                 return;
             }
 
-            aiResultContainer.style.display = 'block';
-            aiResultDiv.style.display = 'none';
             aiLoader.style.display = 'block';
 
             const generationPrompt = `Generate a unique game idea based on the theme: "${promptText}".
@@ -487,10 +492,6 @@
         async function processAndDisplayGeneratedIdea(idea) {
             if (!idea) return;
             
-            aiResultContainer.style.display = 'block';
-            aiResultDiv.style.display = 'block';
-            aiLoader.style.display = 'none';
-
             if (!userProfile.isCreator) {
                 userProfile.generationsRemaining--;
                 await updateUserProfileInFirestore();
@@ -501,16 +502,26 @@
             const publicIdeaRef = doc(db, "publicIdeas", ideaToAdd.name);
             await setDoc(publicIdeaRef, ideaToAdd);
             
-            globalGameIdeas.push(ideaToAdd);
-            updateUI();
-
-            aiResultDiv.innerHTML = `
-                <h4 class="font-bold text-lg">${idea.name}</h4>
-                <p>${idea.description}</p>
-                <p class="text-sm text-gray-600 mt-2"><em>Category: ${idea.category} | Genre: ${idea.genre} | Viability: ${idea.viability}</em></p>
-                <p class="text-green-600 mt-2 font-semibold">Successfully generated and added to the public list!</p>
+            globalGameIdeas.unshift(ideaToAdd);
+            
+            // Display the new idea in its own card
+            recentIdeaContainer.classList.remove('hidden');
+            recentIdeaContainer.innerHTML = `
+                <div class="bg-white p-6 rounded-lg shadow-md">
+                    <h2 class="text-2xl font-semibold text-gray-800 mb-4">Your Latest Idea ✨</h2>
+                    <div class="bg-indigo-50 dark:bg-indigo-900/50 p-6 rounded-lg cursor-pointer transition-transform hover:scale-[1.02]" id="recent-idea-card">
+                        <h3 class="text-xl font-semibold mb-2">${idea.name}</h3>
+                        <p class="text-gray-600 mb-4">${idea.description}</p>
+                        <div class="flex justify-between items-center text-sm text-gray-500">
+                            <span>${idea.category} - ${idea.genre}</span>
+                            <span class="text-xs font-medium px-2.5 py-0.5 rounded bg-indigo-100 text-indigo-800">AI Generated</span>
+                        </div>
+                    </div>
+                </div>
             `;
-            setTimeout(() => { aiResultContainer.style.display = 'none'; aiResultDiv.innerHTML = ''; }, 3000);
+            document.getElementById('recent-idea-card').addEventListener('click', () => showIdeaModal(ideaToAdd));
+
+            updateUI();
         }
 
 
@@ -865,12 +876,15 @@
 
                 console.log("Transaction successfully committed!");
                 userSavedIdeas.push(ideaToSave);
+                
+                // Update the global list to reflect the claim, but only if the user is not a creator
                 if (!userProfile.isCreator) {
-                    globalGameIdeas = globalGameIdeas.filter(idea => idea.name !== ideaToSave.name);
+                     await loadPublicIdeas(); // Reload public ideas to filter out the newly claimed one for others
                 }
+                
                 allClaimedIdeas.set(ideaToSave.name, { claimedBy: userId });
                 updateSaveButtonState();
-                updateUI();
+                updateUI(); // This will now correctly show the claimed idea for the current user
                 alert(`Successfully claimed "${ideaToSave.name}"! It has been added to your collection.`);
 
             } catch (e) {
@@ -906,13 +920,15 @@
             }
 
             const isSaved = userSavedIdeas.some(saved => saved.name === currentIdeaInModal.name);
-            const isClaimedByAnyone = allClaimedIdeas.has(currentIdeaInModal.name);
+            const claimInfo = allClaimedIdeas.get(currentIdeaInModal.name);
+            const isClaimedByOther = claimInfo && claimInfo.claimedBy !== userId;
+
 
             if (isSaved) {
                 saveIdeaBtn.textContent = 'Idea Saved in Your Collection';
                 saveIdeaBtn.disabled = true;
                 saveIdeaBtn.classList.add('bg-gray-400', 'cursor-not-allowed');
-            } else if (isClaimedByAnyone) {
+            } else if (isClaimedByOther) {
                 saveIdeaBtn.textContent = 'Idea Already Claimed';
                 saveIdeaBtn.disabled = true;
                 saveIdeaBtn.classList.add('bg-gray-400', 'cursor-not-allowed');
