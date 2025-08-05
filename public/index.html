@@ -119,6 +119,7 @@
                         <button id="login-btn-header" class="bg-indigo-600 text-white font-semibold py-2 px-4 rounded-md hover:bg-indigo-700 transition">Login</button>
                     </div>
                     <div id="user-info" class="hidden items-center">
+                        <button id="buy-one-shot-btn" class="hidden bg-gray-200 text-gray-800 font-semibold py-2 px-4 rounded-md hover:bg-gray-300 transition mr-4">Buy One Shot</button>
                         <button id="my-collection-btn" class="text-sm font-medium text-indigo-600 hover:underline mr-4">My Collection</button>
                         <button id="manage-subscription-btn" class="text-sm font-medium text-green-600 hover:underline mr-4">Manage Subscription</button>
                         <span id="user-name" class="mr-4 text-sm font-medium text-gray-700"></span>
@@ -147,6 +148,14 @@
                 <div id="ai-result-container" class="mt-4 hidden">
                      <div id="ai-loader" class="loader hidden"></div>
                      <div id="ai-result" class="bg-indigo-50 p-4 rounded-md"></div>
+                </div>
+            </div>
+
+            <!-- Last Generated Idea -->
+            <div id="last-generated-container" class="hidden mb-8">
+                <h2 class="text-2xl font-semibold mb-4 text-gray-800">Your Latest Generated Idea</h2>
+                <div id="last-generated-card">
+                    <!-- Card will be inserted here -->
                 </div>
             </div>
 
@@ -197,7 +206,7 @@
              <div class="p-6">
                 <div class="flex justify-between items-start">
                     <h2 id="modal-title" class="text-3xl font-bold text-gray-900">Modal Title</h2>
-                    <button id="modal-close-btn" class="text-gray-400 hover:text-gray-600 text-3xl leading-none">&times;</button>
+                    <button class="modal-close-btn text-gray-400 hover:text-gray-600 text-3xl leading-none">&times;</button>
                 </div>
                 <div class="mt-4">
                     <p id="modal-description" class="text-gray-700 mb-6">Description goes here.</p>
@@ -269,14 +278,14 @@
                             <h3 class="text-xl font-semibold">Single Shot</h3>
                             <p class="text-3xl font-bold my-4">$1</p>
                             <p class="text-gray-500 text-sm mb-6">Per Generation</p>
-                            <button class="payment-btn w-full bg-gray-200 text-gray-800 font-semibold py-2 px-4 rounded-md hover:bg-gray-300" data-price-id="YOUR_ONE_TIME_PRICE_ID" data-tier-name="single">Purchase</button>
+                            <button class="payment-btn w-full bg-gray-200 text-gray-800 font-semibold py-2 px-4 rounded-md hover:bg-gray-300" data-price-id="prod_SoRNQkLBqUZNRz" data-tier-name="single">Purchase</button>
                         </div>
                         <!-- Tier 1 -->
                         <div class="plan-card border-2 border-gray-200 p-6 rounded-lg">
                             <h3 class="text-xl font-semibold">Spark</h3>
                             <p class="text-3xl font-bold my-4">$2<span class="text-base font-normal text-gray-500">/mo</span></p>
                             <p class="text-gray-500 text-sm mb-6">4 Generations</p>
-                            <button class="payment-btn w-full bg-indigo-600 text-white font-semibold py-2 px-4 rounded-md hover:bg-indigo-700" data-price-id="YOUR_TIER_1_PRICE_ID" data-tier-name="Spark">Subscribe</button>
+                            <button class="payment-btn w-full bg-indigo-600 text-white font-semibold py-2 px-4 rounded-md hover:bg-indigo-700" data-price-id="prod_SoRNpAtIJB5rmM" data-tier-name="Spark">Subscribe</button>
                         </div>
                         <!-- Tier 2 -->
                         <div class="plan-card border-2 border-indigo-600 p-6 rounded-lg relative">
@@ -284,14 +293,14 @@
                             <h3 class="text-xl font-semibold">Creator</h3>
                             <p class="text-3xl font-bold my-4">$5<span class="text-base font-normal text-gray-500">/mo</span></p>
                             <p class="text-gray-500 text-sm mb-6">10 Generations</p>
-                            <button class="payment-btn w-full bg-indigo-600 text-white font-semibold py-2 px-4 rounded-md hover:bg-indigo-700" data-price-id="YOUR_TIER_2_PRICE_ID" data-tier-name="Creator">Subscribe</button>
+                            <button class="payment-btn w-full bg-indigo-600 text-white font-semibold py-2 px-4 rounded-md hover:bg-indigo-700" data-price-id="prod_SoROvkNOfiCBHT" data-tier-name="Creator">Subscribe</button>
                         </div>
                         <!-- Unlimited -->
                         <div class="plan-card border-2 border-gray-200 p-6 rounded-lg">
                             <h3 class="text-xl font-semibold">Universe</h3>
                             <p class="text-3xl font-bold my-4">$11<span class="text-base font-normal text-gray-500">/mo</span></p>
                             <p class="text-gray-500 text-sm mb-6">Unlimited</p>
-                            <button class="payment-btn w-full bg-indigo-600 text-white font-semibold py-2 px-4 rounded-md hover:bg-indigo-700" data-price-id="YOUR_UNLIMITED_PRICE_ID" data-tier-name="Universe">Subscribe</button>
+                            <button class="payment-btn w-full bg-indigo-600 text-white font-semibold py-2 px-4 rounded-md hover:bg-indigo-700" data-price-id="prod_SoRPNpBoAkCKam" data-tier-name="Universe">Subscribe</button>
                         </div>
                     </div>
                 </div>
@@ -315,7 +324,7 @@
         // --- Firebase Imports ---
         import { initializeApp } from "https://www.gstatic.com/firebasejs/11.6.1/firebase-app.js";
         import { getAuth, GoogleAuthProvider, signInWithPopup, onAuthStateChanged, signOut, getAdditionalUserInfo } from "https://www.gstatic.com/firebasejs/11.6.1/firebase-auth.js";
-        import { getFirestore, doc, setDoc, getDoc, updateDoc, collection, getDocs, writeBatch, runTransaction } from "https://www.gstatic.com/firebasejs/11.6.1/firebase-firestore.js";
+        import { getFirestore, doc, setDoc, getDoc, updateDoc, collection, getDocs, writeBatch, runTransaction, deleteDoc } from "https://www.gstatic.com/firebasejs/11.6.1/firebase-firestore.js";
         import { getFunctions, httpsCallable } from "https://www.gstatic.com/firebasejs/11.6.1/firebase-functions.js";
 
         // --- DATA STORE ---
@@ -389,6 +398,8 @@
         const subscribeBtnHeader = document.getElementById('subscribe-btn-header');
         const themeToggle = document.getElementById('theme-toggle');
         const manageSubscriptionBtn = document.getElementById('manage-subscription-btn');
+        const unsubscribeBtn = document.getElementById('unsubscribe-btn');
+        const changePlanBtn = document.getElementById('change-plan-btn');
 
         // --- Firebase Initialization ---
         let auth, db, functions, userId, stripe;
@@ -403,7 +414,7 @@
         };
         // IMPORTANT: Add your Google Client ID here for the export feature to work!
         const GOOGLE_CLIENT_ID = '850865251637-pjqrag7ifu8spe38hs94rcljic8e8hvn.apps.googleusercontent.com';
-        const STRIPE_PUBLISHABLE_KEY = 'YOUR_STRIPE_PUBLISHABLE_KEY_HERE';
+        const STRIPE_PUBLISHABLE_KEY = 'pk_test_51RsoOfCwDp9xaV9n86nL39TWWchBHZsVbJkmmYcxEP1aKOQLZQQ8gxNj0y7Re38KGBg6wh0lnMayCaNobS8FYgsW00YIMghoAD';
 
         const app = initializeApp(firebaseConfig);
         auth = getAuth(app);
@@ -469,6 +480,8 @@
         async function handleGenerateClick() {
             const promptText = aiPrompt.value;
             if (!promptText) return;
+            
+            aiPrompt.value = ''; // Clear the input field
 
             if (!userId) {
                 guestAttemptedGeneration = true;
@@ -861,7 +874,7 @@
         }
 
         function showPaymentModal() {
-            if (userProfile.subscriptionTier !== 'free') {
+            if (userProfile.subscriptionTier !== 'free' && userProfile.subscriptionTier !== 'single') {
                 document.getElementById('plan-selection-view').classList.add('hidden');
                 document.getElementById('manage-subscription-view').classList.remove('hidden');
                 document.getElementById('current-plan-name').textContent = userProfile.subscriptionTier;
@@ -876,19 +889,25 @@
             hideModal(paymentModal);
         }
 
-        async function handlePurchase(priceId) {
+        async function handlePurchase(priceId, tierName) {
             if (!userId) {
                 alert("You must be logged in to make a purchase.");
                 return;
             }
-            const createStripeCheckoutSession = httpsCallable(functions, 'createStripeCheckoutSession');
-            try {
-                const { data } = await createStripeCheckoutSession({ priceId });
-                await stripe.redirectToCheckout({ sessionId: data.sessionId });
-            } catch (error) {
-                console.error("Stripe checkout error:", error);
-                alert("Could not initiate payment. Please try again.");
+            // This is a simulation. A real app would handle a Stripe/PayPal transaction here.
+            if (tierName !== 'single') {
+                userProfile.subscriptionTier = tierName;
             }
+            
+            if (tierName === 'Spark') userProfile.generationsRemaining += 4;
+            else if (tierName === 'Creator') userProfile.generationsRemaining += 10;
+            else if (tierName === 'Universe') userProfile.generationsRemaining = Infinity;
+            else if (tierName === 'single') userProfile.generationsRemaining += 1;
+
+            await updateUserProfileInFirestore();
+            updateGenerationCounter();
+            hidePaymentModal();
+            alert('Purchase successful! Your new generation balance has been updated.');
         }
 
         // --- Firestore & Data Functions ---
@@ -926,6 +945,36 @@
                 alert(e.message);
             }
         }
+        
+        async function removeIdeaFromFirestore(ideaToRemove) {
+            if (!userId) return;
+
+            const claimedIdeaRef = doc(db, "claimedIdeas", ideaToRemove.name);
+            const userIdeaRef = doc(db, `users/${userId}/savedIdeas`, ideaToRemove.name);
+
+            try {
+                const batch = writeBatch(db);
+                batch.delete(claimedIdeaRef);
+                batch.delete(userIdeaRef);
+                await batch.commit();
+
+                console.log("Successfully removed idea.");
+                // Update local state and UI
+                userSavedIdeas = userSavedIdeas.filter(idea => idea.name !== ideaToRemove.name);
+                allClaimedIdeas.delete(ideaToRemove.name);
+                if (!userProfile.isCreator) {
+                    globalGameIdeas.push(ideaToRemove);
+                }
+                updateSaveButtonState();
+                updateUI();
+                alert(`Successfully removed "${ideaToRemove.name}" from your collection.`);
+                hideModal(modal);
+
+            } catch (e) {
+                console.error("Error removing document: ", e);
+                alert("Failed to remove idea. Please try again.");
+            }
+        }
 
 
         async function loadSavedIdeas() {
@@ -949,7 +998,7 @@
                 saveIdeaBtn.textContent = 'Cannot Claim Existing Games';
                 saveIdeaBtn.disabled = true;
                 saveIdeaBtn.classList.add('bg-gray-400', 'cursor-not-allowed');
-                saveIdeaBtn.classList.remove('bg-green-600', 'hover:bg-green-700');
+                saveIdeaBtn.classList.remove('bg-green-600', 'hover:bg-green-700', 'bg-red-600', 'hover:bg-red-700');
                 return;
             }
 
@@ -957,20 +1006,20 @@
             const isClaimedByAnyone = allClaimedIdeas.has(currentIdeaInModal.name);
 
             if (isSaved) {
-                saveIdeaBtn.textContent = 'Idea Saved in Your Collection';
-                saveIdeaBtn.disabled = true;
-                saveIdeaBtn.classList.add('bg-gray-400', 'cursor-not-allowed');
-                saveIdeaBtn.classList.remove('bg-green-600', 'hover:bg-green-700');
+                saveIdeaBtn.textContent = 'Remove from My Collection';
+                saveIdeaBtn.disabled = false;
+                saveIdeaBtn.classList.remove('bg-gray-400', 'cursor-not-allowed', 'bg-green-600', 'hover:bg-green-700');
+                saveIdeaBtn.classList.add('bg-red-600', 'hover:bg-red-700');
             } else if (isClaimedByAnyone) {
                 saveIdeaBtn.textContent = 'Idea Already Claimed';
                 saveIdeaBtn.disabled = true;
                 saveIdeaBtn.classList.add('bg-gray-400', 'cursor-not-allowed');
-                saveIdeaBtn.classList.remove('bg-green-600', 'hover:bg-green-700');
+                saveIdeaBtn.classList.remove('bg-green-600', 'hover:bg-green-700', 'bg-red-600', 'hover:bg-red-700');
             }
             else {
                 saveIdeaBtn.textContent = 'Save Idea to My Collection';
                 saveIdeaBtn.disabled = false;
-                saveIdeaBtn.classList.remove('bg-gray-400', 'cursor-not-allowed');
+                saveIdeaBtn.classList.remove('bg-gray-400', 'cursor-not-allowed', 'bg-red-600', 'hover:bg-red-700');
                 saveIdeaBtn.classList.add('bg-green-600', 'hover:bg-green-700');
             }
         }
@@ -1123,11 +1172,15 @@
         });
         document.querySelectorAll('.payment-btn').forEach(btn => {
             btn.addEventListener('click', (e) => {
-                handlePurchase(e.target.dataset.priceId);
+                handlePurchase(e.target.dataset.priceId, e.target.dataset.tierName);
             });
         });
         saveIdeaBtn.addEventListener('click', () => {
-            if (currentIdeaInModal) {
+            if (!currentIdeaInModal) return;
+            const isSaved = userSavedIdeas.some(saved => saved.name === currentIdeaInModal.name);
+            if (isSaved) {
+                removeIdeaFromFirestore(currentIdeaInModal);
+            } else {
                 saveIdeaToFirestore(currentIdeaInModal);
             }
         });
@@ -1145,6 +1198,18 @@
         });
         subscribeBtnHeader.addEventListener('click', showPaymentModal);
         manageSubscriptionBtn.addEventListener('click', showPaymentModal);
+        unsubscribeBtn.addEventListener('click', async () => {
+            userProfile.subscriptionTier = 'free';
+            userProfile.generationsRemaining = 1; // Reset to the free tier's generation count
+            await updateUserProfileInFirestore();
+            updateGenerationCounter();
+            hidePaymentModal();
+            alert('You have successfully unsubscribed.');
+        });
+        changePlanBtn.addEventListener('click', () => {
+            document.getElementById('plan-selection-view').classList.remove('hidden');
+            document.getElementById('manage-subscription-view').classList.add('hidden');
+        });
 
 
         function updateThemeIcons(isDark) {
