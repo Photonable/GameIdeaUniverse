@@ -40,9 +40,6 @@
             overflow: hidden;
             transition: max-height 0.5s ease-in-out;
         }
-        .login-gate {
-            transition: opacity 0.5s ease-in-out;
-        }
         .plan-card {
             transition: transform 0.2s ease-in-out, box-shadow 0.2s ease-in-out;
         }
@@ -72,22 +69,32 @@
 </head>
 <body class="bg-gray-100 text-gray-800">
 
-    <!-- Login Gate -->
-    <div id="login-gate" class="login-gate fixed inset-0 bg-gray-100/80 dark:bg-gray-900/80 flex items-center justify-center z-50 hidden opacity-0">
-        <div class="text-center p-8 bg-white dark:bg-gray-800 rounded-lg shadow-xl max-w-sm mx-auto relative">
-            <button id="close-login-gate-btn" class="absolute top-2 right-3 text-gray-400 hover:text-gray-600 text-4xl leading-none">&times;</button>
-            <h1 class="text-3xl font-bold text-gray-900">Game Idea Universe</h1>
-            <p class="text-gray-600 mt-2 mb-6">Please log in to continue.</p>
-            <!-- Google reCAPTCHA -->
+    <!-- Login Modal -->
+    <div id="login-modal" class="modal-overlay fixed inset-0 bg-black bg-opacity-60 flex items-center justify-center z-50 hidden opacity-0">
+        <div class="modal-container text-center p-8 bg-white rounded-lg shadow-xl max-w-sm mx-auto transform scale-95">
+            <h1 class="text-3xl font-bold text-gray-900">Welcome!</h1>
+            <p class="text-gray-600 mt-2 mb-6">Please sign in to unlock all features and save your ideas.</p>
             <div class="g-recaptcha my-4 flex justify-center" 
                  data-sitekey="6Lea7ZUrAAAAADNomiJtEn309X5wWL5BUm3eRarH"
                  data-callback="onRecaptchaSuccess">
             </div>
-            <button id="login-btn-main" class="bg-indigo-600 text-white font-semibold py-3 px-6 rounded-md hover:bg-indigo-700 focus:outline-none focus:ring-2 focus:ring-offset-2 focus:ring-indigo-500 transition duration-150 ease-in-out opacity-50 cursor-not-allowed" disabled>
+            <button id="login-btn-modal" class="bg-indigo-600 text-white font-semibold py-3 px-6 rounded-md hover:bg-indigo-700 focus:outline-none focus:ring-2 focus:ring-offset-2 focus:ring-indigo-500 transition duration-150 ease-in-out opacity-50 cursor-not-allowed" disabled>
                 Login with Google
             </button>
         </div>
     </div>
+    
+    <!-- Sign Up to View Modal -->
+    <div id="signup-to-view-modal" class="modal-overlay fixed inset-0 bg-black bg-opacity-60 flex items-center justify-center z-50 hidden opacity-0">
+        <div class="modal-container text-center p-8 bg-white rounded-lg shadow-xl max-w-sm mx-auto transform scale-95">
+            <h1 class="text-3xl font-bold text-gray-900">Idea Generated!</h1>
+            <p class="text-gray-600 mt-2 mb-6">Your new game idea is ready. Sign up or log in to view, save, and claim it!</p>
+            <button id="login-btn-signup" class="bg-indigo-600 text-white font-semibold py-3 px-6 rounded-md hover:bg-indigo-700 focus:outline-none focus:ring-2 focus:ring-offset-2 focus:ring-indigo-500 transition duration-150 ease-in-out">
+                Login with Google
+            </button>
+        </div>
+    </div>
+
 
     <div id="main-content">
         <div class="container mx-auto p-4 sm:p-6 lg:p-8">
@@ -99,7 +106,7 @@
                 
                 <!-- Auth & Theme Toggle Container -->
                 <div class="mt-4 md:mt-0 flex items-center justify-center space-x-4">
-                    <button id="login-header-btn" class="hidden bg-indigo-600 text-white font-semibold py-2 px-4 rounded-md hover:bg-indigo-700">Login</button>
+                    <button id="login-btn-header" class="hidden bg-indigo-600 text-white font-semibold py-2 px-4 rounded-md hover:bg-indigo-700 transition">Login</button>
                     <div id="user-info" class="hidden items-center">
                         <button id="my-collection-btn" class="text-sm font-medium text-indigo-600 hover:underline mr-4">My Collection</button>
                         <span id="user-name" class="mr-4 text-sm font-medium text-gray-700"></span>
@@ -125,13 +132,12 @@
                         Generate Idea
                     </button>
                 </div>
-                <div id="ai-loader" class="loader hidden mt-4"></div>
+                <div id="ai-result-container" class="mt-4 hidden">
+                     <div id="ai-loader" class="loader hidden"></div>
+                     <div id="ai-result" class="bg-indigo-50 p-4 rounded-md"></div>
+                </div>
             </div>
 
-            <!-- Recently Generated Idea -->
-            <div id="recent-idea-container" class="hidden mb-8">
-                <!-- Card content will be injected here by JS -->
-            </div>
 
             <!-- Filters for Curated & Scraped Ideas -->
             <div class="bg-white p-6 rounded-lg shadow-md mb-8">
@@ -239,11 +245,11 @@
 
     <!-- Payment Modal -->
     <div id="payment-modal" class="modal-overlay fixed inset-0 bg-black bg-opacity-50 flex items-center justify-center p-4 hidden opacity-0 z-50">
-        <div class="modal-container bg-white w-full max-w-4xl rounded-lg shadow-xl transform scale-95 overflow-y-auto max-h-[90vh]">
+        <div class="modal-container bg-white w-full max-w-4xl rounded-lg shadow-xl transform scale-95">
              <div class="p-8 text-center">
                 <h2 class="text-3xl font-bold text-gray-900">Choose Your Plan</h2>
                 <p class="text-gray-600 mt-2 mb-8">Your first generation is free! Choose a plan to continue creating.</p>
-                <div class="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-4 gap-6">
+                <div class="grid grid-cols-1 md:grid-cols-4 gap-6">
                     <!-- Pay per use -->
                     <div class="plan-card border-2 border-gray-200 p-6 rounded-lg">
                         <h3 class="text-xl font-semibold">Single Shot</h3>
@@ -285,13 +291,10 @@
         // --- Firebase Imports ---
         import { initializeApp } from "https://www.gstatic.com/firebasejs/11.6.1/firebase-app.js";
         import { getAuth, GoogleAuthProvider, signInWithPopup, onAuthStateChanged, signOut, getAdditionalUserInfo } from "https://www.gstatic.com/firebasejs/11.6.1/firebase-auth.js";
-        import * as firebase from "https://www.gstatic.com/firebasejs/11.6.1/firebase-auth.js";
-        import { getFirestore, doc, setDoc, getDoc, updateDoc, collection, getDocs, writeBatch, runTransaction, addDoc, onSnapshot } from "https://www.gstatic.com/firebasejs/11.6.1/firebase-firestore.js";
+        import { getFirestore, doc, setDoc, getDoc, updateDoc, collection, getDocs, writeBatch, runTransaction } from "https://www.gstatic.com/firebasejs/11.6.1/firebase-firestore.js";
         import { getFunctions, httpsCallable } from "https://www.gstatic.com/firebasejs/11.6.1/firebase-functions.js";
 
         // --- DATA STORE ---
-        // Store the last prompt text before login
-        let lastGenerationPrompt = null;
         let baseGameIdeas = [
             // Existing Games
             { name: "The Witcher 3: Wild Hunt", description: "A story-driven, open-world RPG where you play as a monster hunter for hire.", category: "Video Game", genre: "Action RPG", source: "Existing Game", viability: 98, viabilityBreakdown: { originality: 85, marketAppeal: 99, scope: 95 } },
@@ -326,6 +329,8 @@
         const sourceFilter = document.getElementById('source-filter');
         const generateBtn = document.getElementById('generate-btn');
         const aiPrompt = document.getElementById('ai-prompt');
+        const aiResultContainer = document.getElementById('ai-result-container');
+        const aiResultDiv = document.getElementById('ai-result');
         const aiLoader = document.getElementById('ai-loader');
         const modal = document.getElementById('idea-modal');
         const modalTitle = document.getElementById('modal-title');
@@ -354,9 +359,11 @@
         const claimedByUserSpan = document.getElementById('claimed-by-user');
         const loginGate = document.getElementById('login-gate');
         const themeToggle = document.getElementById('theme-toggle');
-        const loginHeaderBtn = document.getElementById('login-header-btn');
-        const closeLoginGateBtn = document.getElementById('close-login-gate-btn');
-        const recentIdeaContainer = document.getElementById('recent-idea-container');
+        const loginModal = document.getElementById('login-modal');
+        const signupToViewModal = document.getElementById('signup-to-view-modal');
+        const loginBtnModal = document.getElementById('login-btn-modal');
+        const loginBtnSignup = document.getElementById('login-btn-signup');
+        const loginBtnHeader = document.getElementById('login-btn-header');
 
         // --- Firebase Initialization ---
         let auth, db, functions, userId;
@@ -381,28 +388,11 @@
         // --- FUNCTIONS ---
 
         /**
-         * Shows the login gate and blurs the main content.
-         */
-        function showLoginGate() {
-            mainContent.classList.add('blur-sm', 'pointer-events-none');
-            loginGate.classList.remove('hidden');
-            setTimeout(() => loginGate.classList.remove('opacity-0'), 10);
-        }
-
-        /**
-         * Hides the login gate and un-blurs the main content.
-         */
-        function hideLoginGate() {
-            mainContent.classList.remove('blur-sm', 'pointer-events-none');
-            loginGate.classList.add('opacity-0');
-            setTimeout(() => loginGate.classList.add('hidden'), 500);
-        }
-        
-        /**
          * Fetches the public list of game ideas from Firestore.
          */
         async function loadPublicIdeas() {
             try {
+                // Load all claimed ideas first to know what to filter
                 const claimedSnapshot = await getDocs(collection(db, "claimedIdeas"));
                 allClaimedIdeas = new Map();
                 claimedSnapshot.forEach(doc => {
@@ -415,19 +405,18 @@
                     publicIdeas.push(doc.data());
                 });
 
+                // If the user is not the creator, filter out claimed ideas
                 if (!userProfile.isCreator) {
-                    publicIdeas = publicIdeas.filter(idea => {
-                        const claimInfo = allClaimedIdeas.get(idea.name);
-                        return !claimInfo || claimInfo.claimedBy === userId;
-                    });
+                    publicIdeas = publicIdeas.filter(idea => !allClaimedIdeas.has(idea.name));
                 }
 
+                // Combine with the hardcoded base ideas
                 globalGameIdeas = [...baseGameIdeas, ...publicIdeas];
                 updateUI();
 
             } catch (error) {
                 console.error("Error loading public ideas:", error);
-                globalGameIdeas = [...baseGameIdeas];
+                globalGameIdeas = [...baseGameIdeas]; // Fallback to base ideas
                 updateUI();
             }
         }
@@ -442,7 +431,7 @@
                 return result.data;
             } catch (error) {
                 console.error("Cloud Function error:", error);
-                alert("Sorry, the AI generator failed. Please try again later.");
+                aiResultDiv.innerHTML = `<p class="text-red-500">Sorry, the AI generator failed. Please try again later.</p>`;
                 return null;
             }
         }
@@ -452,15 +441,10 @@
          */
         async function handleGenerateClick() {
             const promptText = aiPrompt.value;
-            if (!promptText) {
-                alert('Please enter a theme or idea to generate from');
-                return;
-            }
+            if (!promptText) return;
 
             if (!userId) {
-                // Store the prompt text so we can use it after login
-                lastGenerationPrompt = promptText;
-                showLoginGate();
+                showModal(signupToViewModal);
                 return;
             }
             
@@ -469,6 +453,8 @@
                 return;
             }
 
+            aiResultContainer.style.display = 'block';
+            aiResultDiv.style.display = 'none';
             aiLoader.style.display = 'block';
 
             const generationPrompt = `Generate a unique game idea based on the theme: "${promptText}".
@@ -484,7 +470,7 @@
                 - **scope**: How complex would this be to develop? (integer 1-100, where 1 is trivial and 100 is a massive AAA project)`;
 
             const newIdea = await callSecureGenerator(generationPrompt);
-            lastGeneratedIdea = newIdea;
+            lastGeneratedIdea = newIdea; // Store the generated idea temporarily
 
             aiLoader.style.display = 'none';
             
@@ -496,6 +482,10 @@
         async function processAndDisplayGeneratedIdea(idea) {
             if (!idea) return;
             
+            aiResultContainer.style.display = 'block';
+            aiResultDiv.style.display = 'block';
+            aiLoader.style.display = 'none';
+
             if (!userProfile.isCreator) {
                 userProfile.generationsRemaining--;
                 await updateUserProfileInFirestore();
@@ -506,25 +496,16 @@
             const publicIdeaRef = doc(db, "publicIdeas", ideaToAdd.name);
             await setDoc(publicIdeaRef, ideaToAdd);
             
-            globalGameIdeas.unshift(ideaToAdd);
-            
-            recentIdeaContainer.classList.remove('hidden');
-            recentIdeaContainer.innerHTML = `
-                <div class="bg-white p-6 rounded-lg shadow-md">
-                    <h2 class="text-2xl font-semibold text-gray-800 mb-4">Your Latest Idea ✨</h2>
-                    <div class="bg-indigo-50 dark:bg-indigo-900/50 p-6 rounded-lg cursor-pointer transition-transform hover:scale-[1.02]" id="recent-idea-card">
-                        <h3 class="text-xl font-semibold mb-2">${idea.name}</h3>
-                        <p class="text-gray-600 mb-4">${idea.description}</p>
-                        <div class="flex justify-between items-center text-sm text-gray-500">
-                            <span>${idea.category} - ${idea.genre}</span>
-                            <span class="text-xs font-medium px-2.5 py-0.5 rounded bg-indigo-100 text-indigo-800">AI Generated</span>
-                        </div>
-                    </div>
-                </div>
-            `;
-            document.getElementById('recent-idea-card').addEventListener('click', () => showIdeaModal(ideaToAdd));
-
+            globalGameIdeas.push(ideaToAdd);
             updateUI();
+
+            aiResultDiv.innerHTML = `
+                <h4 class="font-bold text-lg">${idea.name}</h4>
+                <p>${idea.description}</p>
+                <p class="text-sm text-gray-600 mt-2"><em>Category: ${idea.category} | Genre: ${idea.genre} | Viability: ${idea.viability}</em></p>
+                <p class="text-green-600 mt-2 font-semibold">Successfully generated and added to the public list!</p>
+            `;
+            setTimeout(() => { aiResultContainer.style.display = 'none'; aiResultDiv.innerHTML = ''; }, 3000);
         }
 
 
@@ -533,7 +514,7 @@
          */
         function showIdeaModal(idea) {
             if (!userId) {
-                showLoginGate();
+                showModal(loginModal);
                 return;
             }
             if (!modal) return;
@@ -544,11 +525,15 @@
             modalGenre.textContent = idea.genre;
             modalViability.textContent = `${idea.viability} / 100`;
             
+            // Populate breakdown
             breakdownOriginality.textContent = `${idea.viabilityBreakdown.originality} / 100`;
             breakdownMarket.textContent = `${idea.viabilityBreakdown.marketAppeal} / 100`;
             breakdownScope.textContent = `${idea.viabilityBreakdown.scope} / 100`;
 
+            // Populate related ideas
             populateRelatedIdeas(idea);
+
+            // Update save button state and creator view
             updateSaveButtonState();
             if (userProfile.isCreator && allClaimedIdeas.has(idea.name)) {
                 claimStatusContainer.classList.remove('hidden');
@@ -557,6 +542,8 @@
                 claimStatusContainer.classList.add('hidden');
             }
 
+
+            // Reset breakdown view
             modalViabilityBreakdown.style.maxHeight = '0px';
             viabilityBreakdownBtn.textContent = 'Show Breakdown';
             
@@ -580,6 +567,7 @@
                     el.innerHTML = `<h4 class="font-semibold">${idea.name}</h4><p class="text-xs text-gray-500">${idea.category} - ${idea.genre}</p>`;
                     el.addEventListener('click', () => {
                         hideModal(modal);
+                        // A short delay allows the close animation to finish before the new one opens
                         setTimeout(() => showIdeaModal(idea), 300);
                     });
                     relatedIdeasList.appendChild(el);
@@ -637,6 +625,11 @@
          */
         function displayGameIdeas() {
             gameIdeasContainer.innerHTML = '';
+            if (!userId) {
+                gameIdeasContainer.classList.add('blur-sm', 'pointer-events-none');
+            } else {
+                gameIdeasContainer.classList.remove('blur-sm', 'pointer-events-none');
+            }
 
             const selectedCategory = categoryFilter.value;
             const selectedGenre = genreFilter.value;
@@ -645,8 +638,7 @@
             let ideasToDisplay = globalGameIdeas;
             if (selectedSource === 'My Saved Ideas') {
                 if (!userId) {
-                    showLoginGate();
-                    sourceFilter.value = 'all'; // Reset filter
+                    showModal(loginModal);
                     return;
                 }
                 ideasToDisplay = userSavedIdeas;
@@ -676,44 +668,20 @@
                         savedFlag = `<span class="text-xs font-medium mr-2 px-2.5 py-0.5 rounded bg-yellow-100 text-yellow-800">In My Collection</span>`;
                     }
 
-                    if (!userId) {
-                        // Guest view: Show blurred content with login prompt on hover
-                        ideaElement.innerHTML = `
-                            <h3 class="text-xl font-semibold mb-2">${idea.name}</h3>
-                            <div class="flex-grow flex flex-col justify-between filter blur-sm pointer-events-none">
-                                <p class="text-gray-600 mb-4 line-clamp-3">${idea.description}</p>
-                                <div class="flex justify-between items-center text-sm text-gray-500">
-                                    <span>${idea.category} - ${idea.genre}</span>
-                                    <div class="flex items-center">
-                                        <span class="text-xs font-medium px-2.5 py-0.5 rounded ${sourceColor}">${idea.source}</span>
-                                    </div>
-                                </div>
-                            </div>
-                            <div class="absolute inset-0 flex items-center justify-center opacity-0 hover:opacity-100 transition-opacity">
-                                <button class="bg-blue-600 text-white px-4 py-2 rounded-lg shadow hover:bg-blue-700 transform hover:scale-105 transition-transform">
-                                    Login to View Details
-                                </button>
-                            </div>
-                        `;
-                        // Add relative positioning for absolute button placement
-                        ideaElement.classList.add('relative');
-                    } else {
-                        // Logged-in view: Normal card
-                        ideaElement.innerHTML = `
-                            <div class="flex-grow">
-                                <h3 class="text-xl font-semibold mb-2">${idea.name}</h3>
-                                <p class="text-gray-600 mb-4 line-clamp-3">${idea.description}</p>
-                            </div>
-                            <div class="flex justify-between items-center text-sm text-gray-500 mt-auto">
-                                <span>${idea.category} - ${idea.genre}</span>
-                                <div class="flex items-center">
-                                    ${savedFlag}
-                                    <span class="text-xs font-medium px-2.5 py-0.5 rounded ${sourceColor}">${idea.source}</span>
-                                </div>
-                            </div>
-                        `;
-                    }
 
+                    ideaElement.innerHTML = `
+                        <div class="flex-grow">
+                            <h3 class="text-xl font-semibold mb-2">${idea.name}</h3>
+                            <p class="text-gray-600 mb-4 line-clamp-3">${idea.description}</p>
+                        </div>
+                        <div class="flex justify-between items-center text-sm text-gray-500 mt-auto">
+                            <span>${idea.category} - ${idea.genre}</span>
+                            <div class="flex items-center">
+                                ${savedFlag}
+                                <span class="text-xs font-medium px-2.5 py-0.5 rounded ${sourceColor}">${idea.source}</span>
+                            </div>
+                        </div>
+                    `;
                     ideaElement.addEventListener('click', () => showIdeaModal(idea));
                     gameIdeasContainer.appendChild(ideaElement);
                 });
@@ -729,133 +697,57 @@
         }
 
         // --- Recaptcha Functions ---
-        async function onRecaptchaSuccess(token) {
-            const loginBtn = document.getElementById('login-btn-main');
-            loginBtn.disabled = true;
-            loginBtn.classList.add('opacity-50', 'cursor-not-allowed');
-            loginBtn.textContent = 'Verifying...';
-
-            try {
-                const verifyRecaptcha = httpsCallable(functions, 'verifyRecaptcha');
-                const result = await verifyRecaptcha({ token: token });
-
-                if (result.data.success) {
-                    loginBtn.disabled = false;
-                    loginBtn.classList.remove('opacity-50', 'cursor-not-allowed');
-                    loginBtn.textContent = 'Login with Google';
-                    // Immediately trigger the login process after recaptcha success
-                    await reauthenticateForDrive(true);
-                } else {
-                    throw new Error("reCAPTCHA verification failed.");
-                }
-            } catch (error) {
-                console.error("reCAPTCHA verification error:", error);
-                alert("Failed to verify you're not a robot. Please try again.");
-                loginBtn.textContent = 'Login with Google';
-                grecaptcha.reset(); 
-            }
+        function onRecaptchaSuccess() {
+            const loginBtn = document.getElementById('login-btn-modal');
+            loginBtn.disabled = false;
+            loginBtn.classList.remove('opacity-50', 'cursor-not-allowed');
         }
+        // Make onRecaptchaSuccess globally accessible
         window.onRecaptchaSuccess = onRecaptchaSuccess;
 
         // --- Authentication Functions ---
         async function setupAuth() {
             if (!auth) return;
             
-            // Set persistence to LOCAL to keep the user logged in
-            await auth.setPersistence(firebase.auth.Auth.Persistence.LOCAL);
-            
             onAuthStateChanged(auth, async user => {
                 if (user) {
                     // User is signed in
                     userId = user.uid;
-                    
-                    // Ensure we have Drive permissions on first login
-                    if (!googleOauthToken) {
-                        try {
-                            // First try to get existing credential
-                            let credential = GoogleAuthProvider.credentialFromResult(auth.currentUser);
-                            
-                            // If no valid token, request new permissions
-                            if (!credential?.accessToken) {
-                                const provider = new GoogleAuthProvider();
-                                provider.addScope('https://www.googleapis.com/auth/drive.file');
-                                // Sign in again with popup to get fresh token
-                                const result = await signInWithPopup(auth, provider);
-                                credential = GoogleAuthProvider.credentialFromResult(result);
-                            }
-                            
-                            if (credential?.accessToken) {
-                                googleOauthToken = credential.accessToken;
-                            }
-                        } catch (error) {
-                            console.warn("Could not get initial Drive permissions:", error);
-                        }
-                    }
-                    
                     await loadUserProfile(user);
                     await loadSavedIdeas();
                     await loadPublicIdeas();
                     
-                    hideLoginGate();
-                    mainContent.classList.remove('hidden');
+                    hideModal(loginModal);
+                    hideModal(signupToViewModal);
+                    
                     userInfoDiv.classList.remove('hidden');
                     userInfoDiv.classList.add('flex');
-                    loginHeaderBtn.classList.add('hidden');
+                    loginBtnHeader.classList.add('hidden');
                     userNameSpan.textContent = user.displayName || user.email || "Valued User";
 
                     if (lastGeneratedIdea) {
                         processAndDisplayGeneratedIdea(lastGeneratedIdea);
                         lastGeneratedIdea = null;
-                    } else if (lastGenerationPrompt) {
-                        // If there was a prompt waiting, generate it now
-                        aiPrompt.value = lastGenerationPrompt;
-                        lastGenerationPrompt = null;
-                        handleGenerateClick();
                     }
 
                 } else {
                     // User is signed out
                     userId = null;
                     userSavedIdeas = [];
-                    globalGameIdeas = [...baseGameIdeas];
+                    globalGameIdeas = [...baseGameIdeas]; // Show base ideas when logged out
+                    updateUI();
                     
-                    // Handle guest user state
-                    mainContent.classList.remove('hidden');
                     userInfoDiv.classList.add('hidden');
                     userInfoDiv.classList.remove('flex');
-                    loginHeaderBtn.classList.remove('hidden');
-                    loginBtnMain.classList.remove('hidden');
+                    loginBtnHeader.classList.remove('hidden');
                     userNameSpan.textContent = '';
-                    
-                    // Show the login buttons
-                    if (loginHeaderBtn) {
-                        loginHeaderBtn.style.display = 'block';
-                    }
-                    if (loginBtnMain) {
-                        loginBtnMain.style.display = 'block';
-                    }
-
-                    // Show base game ideas for guests
-                    globalGameIdeas = [...baseGameIdeas];
-                    updateUI();
                 }
             });
 
-            // Setup login button handlers
-            loginBtnMain.addEventListener('click', async () => {
-                try {
-                    // Show login button is processing
-                    loginBtnMain.disabled = true;
-                    loginBtnMain.textContent = 'Logging in...';
-                    await reauthenticateForDrive(true);
-                } catch (error) {
-                    console.error("Login failed:", error);
-                    alert("Login failed. Please try again.");
-                } finally {
-                    loginBtnMain.disabled = false;
-                    loginBtnMain.textContent = 'Login with Google';
-                }
-            });
+            loginBtnHeader.addEventListener('click', () => showModal(loginModal));
+            loginBtnModal.addEventListener('click', () => reauthenticateForDrive(true));
+            loginBtnSignup.addEventListener('click', () => reauthenticateForDrive(true));
+
 
             logoutBtn.addEventListener('click', async () => {
                 try {
@@ -867,41 +759,20 @@
         }
 
         async function reauthenticateForDrive(isInitialLogin = false) {
+            const provider = new GoogleAuthProvider();
+            provider.addScope('https://www.googleapis.com/auth/drive.file');
             try {
-                // First check if we already have a valid token from current user
-                if (auth.currentUser) {
-                    const currentCredential = GoogleAuthProvider.credentialFromResult(auth.currentUser);
-                    if (currentCredential?.accessToken) {
-                        googleOauthToken = currentCredential.accessToken;
-                        if (!isInitialLogin) {
-                            exportToGoogleDocs();
-                        }
-                        return googleOauthToken;
-                    }
-                }
-                
-                // If no valid token, request new permissions
-                const provider = new GoogleAuthProvider();
-                provider.addScope('https://www.googleapis.com/auth/drive.file');
-                
-                // Force a new authentication to get fresh token
-                await signOut(auth);
                 const result = await signInWithPopup(auth, provider);
                 const credential = GoogleAuthProvider.credentialFromResult(result);
-                
-                if (!credential?.accessToken) {
-                    throw new Error("Failed to get access token after sign in");
-                }
-                
                 googleOauthToken = credential.accessToken;
                 if (!isInitialLogin) {
-                    exportToGoogleDocs();
+                    exportToGoogleDocs(); // Immediately try exporting again after getting the token
                 }
                 return googleOauthToken;
             } catch (error) {
                 console.error("Reauthentication for Drive failed:", error);
-                // Let the error propagate up to be handled by the caller
-                throw error;
+                alert("Could not get Google Drive permissions. Please try again.");
+                return null;
             }
         }
 
@@ -920,6 +791,7 @@
             if (userDoc.exists()) {
                 userProfile = userDoc.data();
             } else {
+                // Create a new profile for a new user
                 userProfile = { isCreator: false, generationsRemaining: 1, subscriptionTier: 'free' };
                 await setDoc(userDocRef, userProfile);
             }
@@ -954,13 +826,13 @@
         function hidePaymentModal() {
             hideModal(paymentModal);
         }
-        
+
         async function handlePurchase(generations) {
             // This is a simulation. A real app would handle a Stripe/PayPal transaction here.
             if (generations === 'Infinity') {
                 userProfile.generationsRemaining = Infinity;
             } else {
-                userProfile.generationsRemaining += parseInt(generations, 10);
+                userProfile.generationsRemaining += generations;
             }
             await updateUserProfileInFirestore();
             updateGenerationCounter();
@@ -981,17 +853,18 @@
                     if (claimedDoc.exists()) {
                         throw new Error("This idea has already been claimed by another user.");
                     }
+
+                    // If not claimed, claim it and save it to the user's collection
                     transaction.set(claimedIdeaRef, { claimedBy: userId, claimedAt: new Date() });
                     transaction.set(userIdeaRef, ideaToSave);
                 });
 
                 console.log("Transaction successfully committed!");
+                // Add to local state and update UI
                 userSavedIdeas.push(ideaToSave);
-                
                 if (!userProfile.isCreator) {
-                     await loadPublicIdeas(); 
+                    globalGameIdeas = globalGameIdeas.filter(idea => idea.name !== ideaToSave.name);
                 }
-                
                 allClaimedIdeas.set(ideaToSave.name, { claimedBy: userId });
                 updateSaveButtonState();
                 updateUI();
@@ -1030,18 +903,18 @@
             }
 
             const isSaved = userSavedIdeas.some(saved => saved.name === currentIdeaInModal.name);
-            const claimInfo = allClaimedIdeas.get(currentIdeaInModal.name);
-            const isClaimedByOther = claimInfo && claimInfo.claimedBy !== userId;
-
+            const isClaimedByAnyone = allClaimedIdeas.has(currentIdeaInModal.name);
 
             if (isSaved) {
                 saveIdeaBtn.textContent = 'Idea Saved in Your Collection';
                 saveIdeaBtn.disabled = true;
                 saveIdeaBtn.classList.add('bg-gray-400', 'cursor-not-allowed');
-            } else if (isClaimedByOther) {
+                saveIdeaBtn.classList.remove('bg-green-600', 'hover:bg-green-700');
+            } else if (isClaimedByAnyone) {
                 saveIdeaBtn.textContent = 'Idea Already Claimed';
                 saveIdeaBtn.disabled = true;
                 saveIdeaBtn.classList.add('bg-gray-400', 'cursor-not-allowed');
+                saveIdeaBtn.classList.remove('bg-green-600', 'hover:bg-green-700');
             }
             else {
                 saveIdeaBtn.textContent = 'Save Idea to My Collection';
@@ -1058,18 +931,21 @@
             const response = await fetch("https://www.googleapis.com/drive/v3/files?q=mimeType='application/vnd.google-apps.folder' and name='Game Ideas' and trashed=false", {
                 headers: { 'Authorization': `Bearer ${token}` }
             });
-            if (!response.ok) {
-                throw { response };  // This will be caught and handled in the error handler
-            }
             const data = await response.json();
 
             if (data.files && data.files.length > 0) {
                 folderId = data.files[0].id;
             } else {
-                const folderMetadata = { name: 'Game Ideas', mimeType: 'application/vnd.google-apps.folder' };
+                const folderMetadata = {
+                    name: 'Game Ideas',
+                    mimeType: 'application/vnd.google-apps.folder'
+                };
                 const createResponse = await fetch("https://www.googleapis.com/drive/v3/files", {
                     method: 'POST',
-                    headers: { 'Authorization': `Bearer ${token}`, 'Content-Type': 'application/json' },
+                    headers: {
+                        'Authorization': `Bearer ${token}`,
+                        'Content-Type': 'application/json'
+                    },
                     body: JSON.stringify(folderMetadata)
                 });
                 const folderData = await createResponse.json();
@@ -1085,34 +961,10 @@
                 return;
             }
 
-            exportGdocBtn.textContent = 'Checking permissions...';
-            exportGdocBtn.disabled = true;
-
             let token = googleOauthToken;
             if (!token) {
-                try {
-                    token = await reauthenticateForDrive();
-                    if (!token) {
-                        throw new Error('NO_TOKEN');
-                    }
-                } catch (error) {
-                    console.error('Drive auth error:', error);
-                    if (error.code === 'auth/popup-closed-by-user') {
-                        alert('The Google Drive permission window was closed. Please try again and complete the authorization.');
-                    } else if (error.code === 'auth/unauthorized-domain') {
-                        alert('This domain is not authorized for Google Sign-In. Please use game-idea-universe.web.app or gameideasuniverse.com');
-                    } else if (error.code === 'auth/cancelled-popup-request') {
-                        alert('Another popup is already open. Please close it and try again.');
-                    } else if (error.code === 'auth/operation-not-allowed') {
-                        alert('Google Sign-In is not enabled for this application. Please contact support.');
-                    } else {
-                        console.error('Detailed error:', error);
-                        alert('Could not get Google Drive permissions. Please try logging out and back in, then try again.');
-                    }
-                    exportGdocBtn.textContent = 'Export to Google Docs';
-                    exportGdocBtn.disabled = false;
-                    return;
-                }
+                token = await reauthenticateForDrive();
+                if (!token) return; 
             }
 
             exportGdocBtn.textContent = 'Exporting...';
@@ -1123,86 +975,44 @@
             
             try {
                 const folderId = await getOrCreateFolder(token);
+
+                // NEW: Check for existing file
                 const fileQuery = `name='${docTitle}' and '${folderId}' in parents and trashed=false`;
                 const searchResponse = await fetch(`https://www.googleapis.com/drive/v3/files?q=${encodeURIComponent(fileQuery)}&fields=files(id)`, {
                     headers: { 'Authorization': `Bearer ${token}` }
                 });
-                if (!searchResponse.ok) {
-                    throw { response: searchResponse };  // This will be caught and handled in the error handler
-                }
                 const searchData = await searchResponse.json();
 
                 if (searchData.files && searchData.files.length > 0) {
                     alert(`A document named "${docTitle}" already exists in your "Game Ideas" folder.`);
-                    return;
+                    return; // Stop the export
                 }
 
-                const fileMetadata = { name: docTitle, mimeType: 'application/vnd.google-apps.document', parents: [folderId] };
+                // If no file found, proceed with creation
+                const fileMetadata = {
+                    name: docTitle,
+                    mimeType: 'application/vnd.google-apps.document',
+                    parents: [folderId]
+                };
+
                 const createResponse = await fetch("https://www.googleapis.com/drive/v3/files", {
                     method: 'POST',
-                    headers: { 'Authorization': `Bearer ${token}`, 'Content-Type': 'application/json' },
+                    headers: {
+                        'Authorization': `Bearer ${token}`,
+                        'Content-Type': 'application/json'
+                    },
                     body: JSON.stringify(fileMetadata)
                 });
                 const fileData = await createResponse.json();
-
-                // Now add content to the document
-                const content = `${idea.name}\n\n` +
-                    `Category: ${idea.category}\n` +
-                    `Genre: ${idea.genre}\n\n` +
-                    `Description:\n${idea.description}\n\n` +
-                    `Viability Score: ${idea.viability}/100\n\n` +
-                    `Viability Breakdown:\n` +
-                    `- Originality: ${idea.viabilityBreakdown.originality}/100\n` +
-                    `- Market Appeal: ${idea.viabilityBreakdown.marketAppeal}/100\n` +
-                    `- Development Scope: ${idea.viabilityBreakdown.scope}/100\n\n` +
-                    `Generated by Game Idea Universe`;
-
-                const updateResponse = await fetch(`https://www.googleapis.com/upload/drive/v3/files/${fileData.id}?uploadType=media`, {
-                    method: 'PATCH',
-                    headers: {
-                        'Authorization': `Bearer ${token}`,
-                        'Content-Type': 'text/plain'
-                    },
-                    body: content
-                });
-
-                alert(`Successfully created Google Doc "${docTitle}" in the "Game Ideas" folder with your game idea details!`);
+                const fileId = fileData.id;
+                
+                // This part of the API is a bit tricky, it requires a multipart upload to set content.
+                // For this prototype, we'll just create the blank document. A full implementation would add the content here.
+                alert(`Successfully created blank Google Doc "${docTitle}" in the "Game Ideas" folder!`);
 
             } catch (error) {
                 console.error("Error exporting to Google Docs:", error);
-                
-                // Try to parse response for more detailed error info
-                try {
-                    if (error.response) {
-                        const errorData = await error.response.json();
-                        console.error("Drive API Error Details:", errorData);
-                        
-                        if (errorData.error) {
-                            if (errorData.error.code === 401) {
-                                alert("Your Drive permissions have expired. Please try again to reauthorize.");
-                                googleOauthToken = null; // Clear the token to force reauthorization
-                            } else if (errorData.error.code === 403) {
-                                if (errorData.error.message?.includes('unauthorized_client')) {
-                                    alert('This domain is not authorized for Google Drive access. Please use game-idea-universe.web.app');
-                                } else {
-                                    alert("Access to Google Drive was denied. Please ensure you grant all required permissions.");
-                                }
-                            } else {
-                                alert("Drive API Error: " + errorData.error.message);
-                            }
-                            return;
-                        }
-                    }
-                } catch (parseError) {
-                    console.error("Error parsing API response:", parseError);
-                }
-                
-                // Fallback error handling
-                if (error.message === 'Failed to fetch' || error.name === 'TypeError') {
-                    alert("Network error occurred. Please check your internet connection and try again.");
-                } else {
-                    alert("Failed to export. " + (error.message || "Please ensure you have granted Google Drive permissions."));
-                }
+                alert("Failed to export. Please ensure you have granted Google Drive permissions.");
             } finally {
                 exportGdocBtn.textContent = 'Export to Google Docs';
                 exportGdocBtn.disabled = false;
@@ -1231,24 +1041,39 @@
         genreFilter.addEventListener('change', displayGameIdeas);
         sourceFilter.addEventListener('change', displayGameIdeas);
         generateBtn.addEventListener('click', handleGenerateClick);
-        aiPrompt.addEventListener('keydown', (event) => { if (event.key === 'Enter') handleGenerateClick(); });
+        aiPrompt.addEventListener('keydown', (event) => {
+            if (event.key === 'Enter') {
+                handleGenerateClick();
+            }
+        });
         modalCloseBtn.addEventListener('click', () => hideModal(modal));
-        modal.addEventListener('click', (e) => { if (e.target === modal) hideModal(modal); });
-        document.addEventListener('keydown', (event) => { if (event.altKey && event.key.toLowerCase() === 'g') { event.preventDefault(); aiPrompt.focus(); } });
+        modal.addEventListener('click', (e) => {
+            if (e.target === modal) {
+                hideModal(modal);
+            }
+        });
+        document.addEventListener('keydown', (event) => {
+            if (event.altKey && event.key.toLowerCase() === 'g') {
+                event.preventDefault();
+                aiPrompt.focus();
+            }
+        });
         viabilityBreakdownBtn.addEventListener('click', () => {
             const isHidden = modalViabilityBreakdown.style.maxHeight === '0px' || modalViabilityBreakdown.style.maxHeight === '';
             modalViabilityBreakdown.style.maxHeight = isHidden ? `${modalViabilityBreakdown.scrollHeight}px` : '0px';
             viabilityBreakdownBtn.textContent = isHidden ? 'Hide Breakdown' : 'Show Breakdown';
         });
-        
         document.querySelectorAll('.payment-btn').forEach(btn => {
             btn.addEventListener('click', (e) => {
-                const generations = e.target.dataset.generations;
+                const generations = e.target.dataset.generations === 'Infinity' ? 'Infinity' : parseInt(e.target.dataset.generations, 10);
                 handlePurchase(generations);
             });
         });
-
-        saveIdeaBtn.addEventListener('click', () => { if (currentIdeaInModal) saveIdeaToFirestore(currentIdeaInModal); });
+        saveIdeaBtn.addEventListener('click', () => {
+            if (currentIdeaInModal) {
+                saveIdeaToFirestore(currentIdeaInModal);
+            }
+        });
         exportGdocBtn.addEventListener('click', exportToGoogleDocs);
         myCollectionBtn.addEventListener('click', () => {
             sourceFilter.value = 'My Saved Ideas';
@@ -1261,10 +1086,6 @@
             localStorage.setItem('theme', isDark ? 'dark' : 'light');
             updateThemeIcons(isDark);
         });
-        loginHeaderBtn.addEventListener('click', showLoginGate);
-        closeLoginGateBtn.addEventListener('click', hideLoginGate);
-        loginGate.addEventListener('click', (e) => { if(e.target === loginGate) hideLoginGate(); });
-
 
         function updateThemeIcons(isDark) {
             document.getElementById('theme-icon-light').classList.toggle('hidden', isDark);
@@ -1276,12 +1097,17 @@
         document.addEventListener('DOMContentLoaded', () => {
             const savedTheme = localStorage.getItem('theme') || 'light';
             const html = document.documentElement;
-            if (savedTheme === 'dark') html.classList.add('dark');
-            else html.classList.remove('dark');
+            if (savedTheme === 'dark') {
+                html.classList.add('dark');
+            } else {
+                html.classList.remove('dark');
+            }
             updateThemeIcons(savedTheme === 'dark');
-            
+
             setupAuth();
             setupPWA();
+            // We no longer call the simulated reddit fetcher here.
+            // Data is loaded from Firestore after authentication.
         });
 
     </script>
