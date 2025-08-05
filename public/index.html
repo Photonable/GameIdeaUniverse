@@ -285,6 +285,7 @@
         // --- Firebase Imports ---
         import { initializeApp } from "https://www.gstatic.com/firebasejs/11.6.1/firebase-app.js";
         import { getAuth, GoogleAuthProvider, signInWithPopup, onAuthStateChanged, signOut, getAdditionalUserInfo } from "https://www.gstatic.com/firebasejs/11.6.1/firebase-auth.js";
+        import * as firebase from "https://www.gstatic.com/firebasejs/11.6.1/firebase-auth.js";
         import { getFirestore, doc, setDoc, getDoc, updateDoc, collection, getDocs, writeBatch, runTransaction, addDoc, onSnapshot } from "https://www.gstatic.com/firebasejs/11.6.1/firebase-firestore.js";
         import { getFunctions, httpsCallable } from "https://www.gstatic.com/firebasejs/11.6.1/firebase-functions.js";
 
@@ -745,10 +746,37 @@
         async function setupAuth() {
             if (!auth) return;
             
+            // Set persistence to LOCAL to keep the user logged in
+            await auth.setPersistence(firebase.auth.Auth.Persistence.LOCAL);
+            
             onAuthStateChanged(auth, async user => {
                 if (user) {
                     // User is signed in
                     userId = user.uid;
+                    
+                    // Ensure we have Drive permissions on first login
+                    if (!googleOauthToken) {
+                        try {
+                            // First try to get existing credential
+                            let credential = GoogleAuthProvider.credentialFromResult(auth.currentUser);
+                            
+                            // If no valid token, request new permissions
+                            if (!credential?.accessToken) {
+                                const provider = new GoogleAuthProvider();
+                                provider.addScope('https://www.googleapis.com/auth/drive.file');
+                                // Sign in again with popup to get fresh token
+                                const result = await signInWithPopup(auth, provider);
+                                credential = GoogleAuthProvider.credentialFromResult(result);
+                            }
+                            
+                            if (credential?.accessToken) {
+                                googleOauthToken = credential.accessToken;
+                            }
+                        } catch (error) {
+                            console.warn("Could not get initial Drive permissions:", error);
+                        }
+                    }
+                    
                     await loadUserProfile(user);
                     await loadSavedIdeas();
                     await loadPublicIdeas();
@@ -792,11 +820,32 @@
         }
 
         async function reauthenticateForDrive(isInitialLogin = false) {
-            const provider = new GoogleAuthProvider();
-            provider.addScope('https://www.googleapis.com/auth/drive.file');
             try {
+                // First check if we already have a valid token from current user
+                if (auth.currentUser) {
+                    const currentCredential = GoogleAuthProvider.credentialFromResult(auth.currentUser);
+                    if (currentCredential?.accessToken) {
+                        googleOauthToken = currentCredential.accessToken;
+                        if (!isInitialLogin) {
+                            exportToGoogleDocs();
+                        }
+                        return googleOauthToken;
+                    }
+                }
+                
+                // If no valid token, request new permissions
+                const provider = new GoogleAuthProvider();
+                provider.addScope('https://www.googleapis.com/auth/drive.file');
+                
+                // Force a new authentication to get fresh token
+                await signOut(auth);
                 const result = await signInWithPopup(auth, provider);
                 const credential = GoogleAuthProvider.credentialFromResult(result);
+                
+                if (!credential?.accessToken) {
+                    throw new Error("Failed to get access token after sign in");
+                }
+                
                 googleOauthToken = credential.accessToken;
                 if (!isInitialLogin) {
                     exportToGoogleDocs();
@@ -804,8 +853,8 @@
                 return googleOauthToken;
             } catch (error) {
                 console.error("Reauthentication for Drive failed:", error);
-                alert("Could not get Google Drive permissions. Please try again.");
-                return null;
+                // Let the error propagate up to be handled by the caller
+                throw error;
             }
         }
 
@@ -962,6 +1011,9 @@
             const response = await fetch("https://www.googleapis.com/drive/v3/files?q=mimeType='application/vnd.google-apps.folder' and name='Game Ideas' and trashed=false", {
                 headers: { 'Authorization': `Bearer ${token}` }
             });
+            if (!response.ok) {
+                throw { response };  // This will be caught and handled in the error handler
+            }
             const data = await response.json();
 
             if (data.files && data.files.length > 0) {
@@ -986,10 +1038,34 @@
                 return;
             }
 
+            exportGdocBtn.textContent = 'Checking permissions...';
+            exportGdocBtn.disabled = true;
+
             let token = googleOauthToken;
             if (!token) {
-                token = await reauthenticateForDrive();
-                if (!token) return; 
+                try {
+                    token = await reauthenticateForDrive();
+                    if (!token) {
+                        throw new Error('NO_TOKEN');
+                    }
+                } catch (error) {
+                    console.error('Drive auth error:', error);
+                    if (error.code === 'auth/popup-closed-by-user') {
+                        alert('The Google Drive permission window was closed. Please try again and complete the authorization.');
+                    } else if (error.code === 'auth/unauthorized-domain') {
+                        alert('This domain is not authorized for Google Sign-In. Please use game-idea-universe.web.app or gameideasuniverse.com');
+                    } else if (error.code === 'auth/cancelled-popup-request') {
+                        alert('Another popup is already open. Please close it and try again.');
+                    } else if (error.code === 'auth/operation-not-allowed') {
+                        alert('Google Sign-In is not enabled for this application. Please contact support.');
+                    } else {
+                        console.error('Detailed error:', error);
+                        alert('Could not get Google Drive permissions. Please try logging out and back in, then try again.');
+                    }
+                    exportGdocBtn.textContent = 'Export to Google Docs';
+                    exportGdocBtn.disabled = false;
+                    return;
+                }
             }
 
             exportGdocBtn.textContent = 'Exporting...';
@@ -1004,6 +1080,9 @@
                 const searchResponse = await fetch(`https://www.googleapis.com/drive/v3/files?q=${encodeURIComponent(fileQuery)}&fields=files(id)`, {
                     headers: { 'Authorization': `Bearer ${token}` }
                 });
+                if (!searchResponse.ok) {
+                    throw { response: searchResponse };  // This will be caught and handled in the error handler
+                }
                 const searchData = await searchResponse.json();
 
                 if (searchData.files && searchData.files.length > 0) {
@@ -1018,11 +1097,65 @@
                     body: JSON.stringify(fileMetadata)
                 });
                 const fileData = await createResponse.json();
-                alert(`Successfully created blank Google Doc "${docTitle}" in the "Game Ideas" folder!`);
+
+                // Now add content to the document
+                const content = `${idea.name}\n\n` +
+                    `Category: ${idea.category}\n` +
+                    `Genre: ${idea.genre}\n\n` +
+                    `Description:\n${idea.description}\n\n` +
+                    `Viability Score: ${idea.viability}/100\n\n` +
+                    `Viability Breakdown:\n` +
+                    `- Originality: ${idea.viabilityBreakdown.originality}/100\n` +
+                    `- Market Appeal: ${idea.viabilityBreakdown.marketAppeal}/100\n` +
+                    `- Development Scope: ${idea.viabilityBreakdown.scope}/100\n\n` +
+                    `Generated by Game Idea Universe`;
+
+                const updateResponse = await fetch(`https://www.googleapis.com/upload/drive/v3/files/${fileData.id}?uploadType=media`, {
+                    method: 'PATCH',
+                    headers: {
+                        'Authorization': `Bearer ${token}`,
+                        'Content-Type': 'text/plain'
+                    },
+                    body: content
+                });
+
+                alert(`Successfully created Google Doc "${docTitle}" in the "Game Ideas" folder with your game idea details!`);
 
             } catch (error) {
                 console.error("Error exporting to Google Docs:", error);
-                alert("Failed to export. Please ensure you have granted Google Drive permissions.");
+                
+                // Try to parse response for more detailed error info
+                try {
+                    if (error.response) {
+                        const errorData = await error.response.json();
+                        console.error("Drive API Error Details:", errorData);
+                        
+                        if (errorData.error) {
+                            if (errorData.error.code === 401) {
+                                alert("Your Drive permissions have expired. Please try again to reauthorize.");
+                                googleOauthToken = null; // Clear the token to force reauthorization
+                            } else if (errorData.error.code === 403) {
+                                if (errorData.error.message?.includes('unauthorized_client')) {
+                                    alert('This domain is not authorized for Google Drive access. Please use game-idea-universe.web.app');
+                                } else {
+                                    alert("Access to Google Drive was denied. Please ensure you grant all required permissions.");
+                                }
+                            } else {
+                                alert("Drive API Error: " + errorData.error.message);
+                            }
+                            return;
+                        }
+                    }
+                } catch (parseError) {
+                    console.error("Error parsing API response:", parseError);
+                }
+                
+                // Fallback error handling
+                if (error.message === 'Failed to fetch' || error.name === 'TypeError') {
+                    alert("Network error occurred. Please check your internet connection and try again.");
+                } else {
+                    alert("Failed to export. " + (error.message || "Please ensure you have granted Google Drive permissions."));
+                }
             } finally {
                 exportGdocBtn.textContent = 'Export to Google Docs';
                 exportGdocBtn.disabled = false;
