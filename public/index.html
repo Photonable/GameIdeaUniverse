@@ -290,6 +290,8 @@
         import { getFunctions, httpsCallable } from "https://www.gstatic.com/firebasejs/11.6.1/firebase-functions.js";
 
         // --- DATA STORE ---
+        // Store the last prompt text before login
+        let lastGenerationPrompt = null;
         let baseGameIdeas = [
             // Existing Games
             { name: "The Witcher 3: Wild Hunt", description: "A story-driven, open-world RPG where you play as a monster hunter for hire.", category: "Video Game", genre: "Action RPG", source: "Existing Game", viability: 98, viabilityBreakdown: { originality: 85, marketAppeal: 99, scope: 95 } },
@@ -450,9 +452,14 @@
          */
         async function handleGenerateClick() {
             const promptText = aiPrompt.value;
-            if (!promptText) return;
+            if (!promptText) {
+                alert('Please enter a theme or idea to generate from');
+                return;
+            }
 
             if (!userId) {
+                // Store the prompt text so we can use it after login
+                lastGenerationPrompt = promptText;
                 showLoginGate();
                 return;
             }
@@ -670,20 +677,26 @@
                     }
 
                     if (!userId) {
-                        // Guest view: Blur everything except the title
+                        // Guest view: Show blurred content with login prompt on hover
                         ideaElement.innerHTML = `
                             <h3 class="text-xl font-semibold mb-2">${idea.name}</h3>
-                            <div class="flex-grow flex flex-col justify-between blur-sm">
+                            <div class="flex-grow flex flex-col justify-between filter blur-sm pointer-events-none">
                                 <p class="text-gray-600 mb-4 line-clamp-3">${idea.description}</p>
                                 <div class="flex justify-between items-center text-sm text-gray-500">
                                     <span>${idea.category} - ${idea.genre}</span>
                                     <div class="flex items-center">
-                                        ${savedFlag}
                                         <span class="text-xs font-medium px-2.5 py-0.5 rounded ${sourceColor}">${idea.source}</span>
                                     </div>
                                 </div>
                             </div>
+                            <div class="absolute inset-0 flex items-center justify-center opacity-0 hover:opacity-100 transition-opacity">
+                                <button class="bg-blue-600 text-white px-4 py-2 rounded-lg shadow hover:bg-blue-700 transform hover:scale-105 transition-transform">
+                                    Login to View Details
+                                </button>
+                            </div>
                         `;
+                        // Add relative positioning for absolute button placement
+                        ideaElement.classList.add('relative');
                     } else {
                         // Logged-in view: Normal card
                         ideaElement.innerHTML = `
@@ -730,6 +743,8 @@
                     loginBtn.disabled = false;
                     loginBtn.classList.remove('opacity-50', 'cursor-not-allowed');
                     loginBtn.textContent = 'Login with Google';
+                    // Immediately trigger the login process after recaptcha success
+                    await reauthenticateForDrive(true);
                 } else {
                     throw new Error("reCAPTCHA verification failed.");
                 }
@@ -791,6 +806,11 @@
                     if (lastGeneratedIdea) {
                         processAndDisplayGeneratedIdea(lastGeneratedIdea);
                         lastGeneratedIdea = null;
+                    } else if (lastGenerationPrompt) {
+                        // If there was a prompt waiting, generate it now
+                        aiPrompt.value = lastGenerationPrompt;
+                        lastGenerationPrompt = null;
+                        handleGenerateClick();
                     }
 
                 } else {
@@ -799,17 +819,44 @@
                     userSavedIdeas = [];
                     globalGameIdeas = [...baseGameIdeas];
                     
+                    // Handle guest user state
                     mainContent.classList.remove('hidden');
                     userInfoDiv.classList.add('hidden');
                     userInfoDiv.classList.remove('flex');
                     loginHeaderBtn.classList.remove('hidden');
+                    loginBtnMain.classList.remove('hidden');
                     userNameSpan.textContent = '';
+                    
+                    // Show the login buttons
+                    if (loginHeaderBtn) {
+                        loginHeaderBtn.style.display = 'block';
+                    }
+                    if (loginBtnMain) {
+                        loginBtnMain.style.display = 'block';
+                    }
 
+                    // Show base game ideas for guests
+                    globalGameIdeas = [...baseGameIdeas];
                     updateUI();
                 }
             });
 
-            loginBtnMain.addEventListener('click', () => reauthenticateForDrive(true));
+            // Setup login button handlers
+            loginBtnMain.addEventListener('click', async () => {
+                try {
+                    // Show login button is processing
+                    loginBtnMain.disabled = true;
+                    loginBtnMain.textContent = 'Logging in...';
+                    await reauthenticateForDrive(true);
+                } catch (error) {
+                    console.error("Login failed:", error);
+                    alert("Login failed. Please try again.");
+                } finally {
+                    loginBtnMain.disabled = false;
+                    loginBtnMain.textContent = 'Login with Google';
+                }
+            });
+
             logoutBtn.addEventListener('click', async () => {
                 try {
                     await signOut(auth);
@@ -1232,6 +1279,7 @@
             if (savedTheme === 'dark') html.classList.add('dark');
             else html.classList.remove('dark');
             updateThemeIcons(savedTheme === 'dark');
+            
             setupAuth();
             setupPWA();
         });
