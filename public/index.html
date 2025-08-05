@@ -702,9 +702,16 @@
 
         // --- Recaptcha Functions ---
         function onRecaptchaSuccess() {
-            const loginBtn = document.getElementById('login-btn-modal');
-            loginBtn.disabled = false;
-            loginBtn.classList.remove('opacity-50', 'cursor-not-allowed');
+            const loginBtnModal = document.getElementById('login-btn-modal');
+            const loginBtnSignup = document.getElementById('login-btn-signup');
+            if (loginBtnModal) {
+                loginBtnModal.disabled = false;
+                loginBtnModal.classList.remove('opacity-50', 'cursor-not-allowed');
+            }
+            if (loginBtnSignup) {
+                loginBtnSignup.disabled = false;
+                loginBtnSignup.classList.remove('opacity-50', 'cursor-not-allowed');
+            }
         }
         // Make onRecaptchaSuccess globally accessible
         window.onRecaptchaSuccess = onRecaptchaSuccess;
