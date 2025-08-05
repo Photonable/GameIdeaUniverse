@@ -1,9 +1,9 @@
 const functions = require("firebase-functions");
 const admin = require("firebase-admin");
 const { GoogleGenerativeAI } = require("@google/generative-ai");
-const axios = require("axios");
 
 admin.initializeApp();
+const db = admin.firestore();
 
 /**
  * A secure, callable function to generate game ideas using the Gemini API.
@@ -34,87 +34,25 @@ exports.generateIdea = functions.https.onCall(async (data, context) => {
 });
 
 /**
- * Verifies the reCAPTCHA response token from the client.
+ * A scheduled function that resets the free generation count for all non-subscribed users on the 1st of every month.
  */
-exports.verifyRecaptcha = functions.https.onCall(async (data, context) => {
-  const token = data.token;
-  if (!token) {
-    throw new functions.https.HttpsError("invalid-argument", "The function must be called with a 'token' argument.");
-  }
+exports.resetMonthlyGenerations = functions.pubsub.schedule('1 of month 00:00').onRun(async (context) => {
+    console.log('Running monthly generation reset for free users.');
+    const usersRef = db.collection('users');
+    const snapshot = await usersRef.where('subscriptionTier', '==', 'free').get();
 
-  // IMPORTANT: Set your secret key in your Firebase environment
-  // Use the command: firebase functions:config:set recaptcha.secret="YOUR_SECRET_KEY"
-  const secretKey = functions.config().recaptcha.secret;
-  if (!secretKey) {
-      console.error("reCAPTCHA secret key is not configured.");
-      throw new functions.https.HttpsError("failed-precondition", "The reCAPTCHA secret key is not configured.");
-  }
-
-  const verificationUrl = `https://www.google.com/recaptcha/api/siteverify?secret=${secretKey}&response=${token}`;
-
-  try {
-    const response = await axios.post(verificationUrl);
-    if (response.data.success) {
-      return { success: true };
-    } else {
-      console.error("reCAPTCHA verification failed:", response.data['error-codes']);
-      throw new functions.https.HttpsError("unauthenticated", "reCAPTCHA verification failed.", response.data['error-codes']);
+    if (snapshot.empty) {
+        console.log('No free users found to reset.');
+        return null;
     }
-  } catch (error) {
-    console.error("Error calling reCAPTCHA verification API:", error);
-    throw new functions.https.HttpsError("internal", "Unable to verify reCAPTCHA. Please check server logs.");
-  }
-});
 
+    const batch = db.batch();
+    snapshot.forEach(doc => {
+        batch.update(doc.ref, { generationsRemaining: 1 });
+    });
 
-/**
- * A scheduled function to scrape and categorize new game ideas.
- * Runs once every 24 hours.
- */
-exports.scrapeAndCategorizeIdeas = functions.pubsub.schedule('every 24 hours').onRun(async (context) => {
-    console.log('Running scheduled idea scraping...');
-    const db = admin.firestore();
-    const genAI = new GoogleGenerativeAI(functions.config().gemini.key);
-
-
-    // In a real app, this would fetch live data from an API like Reddit.
-    const simulatedPosts = [
-        { title: "A rhythm game where you're a blacksmith forging legendary weapons.", selftext: "Each hammer strike has to be on beat to increase the weapon's power. Different songs create different types of weapons." },
-        { title: "A cooperative board game about terraforming Mars, but you're all rival corporations secretly sabotaging each other.", selftext: "You have to work together to make the planet habitable, but only one company can come out on top." }
-    ];
-
-    for (const post of simulatedPosts) {
-        const prompt = `Analyze the following game idea and provide a structured JSON response.
-        - **name**: A catchy title for the game idea.
-        - **description**: A concise summary of the idea.
-        - **category**: Must be one of: "Video Game", "Board Game", "Card Game", "Other".
-        - **genre**: A suitable genre for the game.
-        - **viability**: An overall market potential score (integer 1-100).
-        - **viabilityBreakdown**: An object with three keys:
-            - **originality**: How unique is the core concept? (integer 1-100)
-            - **marketAppeal**: How broad is the target audience? (integer 1-100)
-            - **scope**: How complex would this be to develop? (integer 1-100, where 1 is trivial and 100 is a massive AAA project)
-
-        Game Idea Title: ${post.title}
-        Game Idea Description: ${post.selftext}`;
-
-        try {
-            const model = genAI.getGenerativeModel({ model: "gemini-2.5-pro" });
-            const result = await model.generateContent(prompt);
-            const response = await result.response;
-            const text = response.text();
-            const cleanedJson = text.replace(/```json\n?|```/g, "").trim();
-            const newIdea = JSON.parse(cleanedJson);
-
-            // Save the new, categorized idea to the public collection
-            const ideaRef = db.collection('publicIdeas').doc(newIdea.name);
-            await ideaRef.set({ ...newIdea, source: 'Reddit' });
-            console.log(`Successfully categorized and saved: ${newIdea.name}`);
-
-        } catch (error) {
-            console.error('Error processing post:', post.title, error);
-        }
-    }
+    await batch.commit();
+    console.log(`Reset 1 free generation for ${snapshot.size} users.`);
     return null;
 });
 
@@ -138,4 +76,37 @@ exports.setCreatorRole = functions.https.onCall(async (data, context) => {
     console.error("Error setting custom claim:", error);
     throw new functions.https.HttpsError("internal", "An error occurred while setting the user role.");
   }
+});
+
+/**
+ * Creates a Stripe Checkout session for a user to purchase generations.
+ */
+exports.createStripeCheckoutSession = functions.https.onCall(async (data, context) => {
+    if (!context.auth) {
+        throw new functions.https.HttpsError("unauthenticated", "You must be logged in to make a purchase.");
+    }
+
+    // Lazily initialize Stripe only when this function is called.
+    const stripe = require("stripe")(functions.config().stripe.secret_key);
+    const { priceId } = data;
+    const userId = context.auth.uid;
+
+    try {
+        const session = await stripe.checkout.sessions.create({
+            payment_method_types: ['card'],
+            mode: 'subscription', // or 'payment' for one-time purchases
+            line_items: [{
+                price: priceId,
+                quantity: 1,
+            }],
+            success_url: `${context.rawRequest.headers.origin}?session_id={CHECKOUT_SESSION_ID}`,
+            cancel_url: `${context.rawRequest.headers.origin}`,
+            client_reference_id: userId,
+        });
+
+        return { sessionId: session.id };
+    } catch (error) {
+        console.error("Stripe session creation failed:", error);
+        throw new functions.https.HttpsError("internal", "Could not create a Stripe session.");
+    }
 });

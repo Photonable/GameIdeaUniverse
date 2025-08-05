@@ -66,12 +66,15 @@
     </style>
      <!-- Google reCAPTCHA -->
     <script src="https://www.google.com/recaptcha/api.js" async defer></script>
+    <!-- Stripe.js -->
+    <script src="https://js.stripe.com/v3/"></script>
 </head>
 <body class="bg-gray-100 text-gray-800">
 
     <!-- Login Modal -->
     <div id="login-modal" class="modal-overlay fixed inset-0 bg-black bg-opacity-60 flex items-center justify-center z-50 hidden opacity-0">
-        <div class="modal-container text-center p-8 bg-white rounded-lg shadow-xl max-w-sm mx-auto transform scale-95">
+        <div class="modal-container text-center p-8 bg-white rounded-lg shadow-xl max-w-sm mx-auto transform scale-95 relative">
+            <button class="modal-close-btn absolute top-2 right-4 text-gray-400 hover:text-gray-600 text-3xl leading-none">&times;</button>
             <h1 class="text-3xl font-bold text-gray-900">Welcome!</h1>
             <p class="text-gray-600 mt-2 mb-6">Please sign in to unlock all features and save your ideas.</p>
             <div class="g-recaptcha my-4 flex justify-center" 
@@ -86,7 +89,8 @@
     
     <!-- Sign Up to View Modal -->
     <div id="signup-to-view-modal" class="modal-overlay fixed inset-0 bg-black bg-opacity-60 flex items-center justify-center z-50 hidden opacity-0">
-        <div class="modal-container text-center p-8 bg-white rounded-lg shadow-xl max-w-sm mx-auto transform scale-95">
+        <div class="modal-container text-center p-8 bg-white rounded-lg shadow-xl max-w-sm mx-auto transform scale-95 relative">
+            <button class="modal-close-btn absolute top-2 right-4 text-gray-400 hover:text-gray-600 text-3xl leading-none">&times;</button>
             <h1 class="text-3xl font-bold text-gray-900">Idea Generated!</h1>
             <p class="text-gray-600 mt-2 mb-6">Your new game idea is ready. Sign up or log in to view, save, and claim it!</p>
             <div class="g-recaptcha my-4 flex justify-center" 
@@ -110,9 +114,13 @@
                 
                 <!-- Auth & Theme Toggle Container -->
                 <div class="mt-4 md:mt-0 flex items-center justify-center space-x-4">
-                    <button id="login-btn-header" class="hidden bg-indigo-600 text-white font-semibold py-2 px-4 rounded-md hover:bg-indigo-700 transition">Login</button>
+                    <div id="logged-out-controls" class="hidden items-center space-x-2">
+                        <button id="subscribe-btn-header" class="bg-green-600 text-white font-semibold py-2 px-4 rounded-md hover:bg-green-700 transition">Subscribe</button>
+                        <button id="login-btn-header" class="bg-indigo-600 text-white font-semibold py-2 px-4 rounded-md hover:bg-indigo-700 transition">Login</button>
+                    </div>
                     <div id="user-info" class="hidden items-center">
                         <button id="my-collection-btn" class="text-sm font-medium text-indigo-600 hover:underline mr-4">My Collection</button>
+                        <button id="manage-subscription-btn" class="text-sm font-medium text-green-600 hover:underline mr-4">Manage Subscription</button>
                         <span id="user-name" class="mr-4 text-sm font-medium text-gray-700"></span>
                         <button id="logout-btn" class="text-sm text-gray-500 hover:text-gray-700 underline">Logout</button>
                     </div>
@@ -250,40 +258,52 @@
     <!-- Payment Modal -->
     <div id="payment-modal" class="modal-overlay fixed inset-0 bg-black bg-opacity-50 flex items-center justify-center p-4 hidden opacity-0 z-50">
         <div class="modal-container bg-white w-full max-w-4xl rounded-lg shadow-xl transform scale-95">
-             <div class="p-8 text-center">
-                <h2 class="text-3xl font-bold text-gray-900">Choose Your Plan</h2>
-                <p class="text-gray-600 mt-2 mb-8">Your first generation is free! Choose a plan to continue creating.</p>
-                <div class="grid grid-cols-1 md:grid-cols-4 gap-6">
-                    <!-- Pay per use -->
-                    <div class="plan-card border-2 border-gray-200 p-6 rounded-lg">
-                        <h3 class="text-xl font-semibold">Single Shot</h3>
-                        <p class="text-3xl font-bold my-4">$1</p>
-                        <p class="text-gray-500 text-sm mb-6">Per Generation</p>
-                        <button class="payment-btn w-full bg-gray-200 text-gray-800 font-semibold py-2 px-4 rounded-md hover:bg-gray-300" data-generations="1">Purchase</button>
-                    </div>
-                    <!-- Tier 1 -->
-                    <div class="plan-card border-2 border-gray-200 p-6 rounded-lg">
-                        <h3 class="text-xl font-semibold">Spark</h3>
-                        <p class="text-3xl font-bold my-4">$2<span class="text-base font-normal text-gray-500">/mo</span></p>
-                        <p class="text-gray-500 text-sm mb-6">4 Generations</p>
-                        <button class="payment-btn w-full bg-indigo-600 text-white font-semibold py-2 px-4 rounded-md hover:bg-indigo-700" data-generations="4">Subscribe</button>
-                    </div>
-                    <!-- Tier 2 -->
-                    <div class="plan-card border-2 border-indigo-600 p-6 rounded-lg relative">
-                        <div class="absolute top-0 -translate-y-1/2 left-1/2 -translate-x-1/2 bg-indigo-600 text-white text-xs font-bold px-3 py-1 rounded-full">POPULAR</div>
-                        <h3 class="text-xl font-semibold">Creator</h3>
-                        <p class="text-3xl font-bold my-4">$5<span class="text-base font-normal text-gray-500">/mo</span></p>
-                        <p class="text-gray-500 text-sm mb-6">10 Generations</p>
-                        <button class="payment-btn w-full bg-indigo-600 text-white font-semibold py-2 px-4 rounded-md hover:bg-indigo-700" data-generations="10">Subscribe</button>
-                    </div>
-                    <!-- Unlimited -->
-                    <div class="plan-card border-2 border-gray-200 p-6 rounded-lg">
-                        <h3 class="text-xl font-semibold">Universe</h3>
-                        <p class="text-3xl font-bold my-4">$11<span class="text-base font-normal text-gray-500">/mo</span></p>
-                        <p class="text-gray-500 text-sm mb-6">Unlimited</p>
-                        <button class="payment-btn w-full bg-indigo-600 text-white font-semibold py-2 px-4 rounded-md hover:bg-indigo-700" data-generations="Infinity">Subscribe</button>
+             <div id="plan-selection-view">
+                <div class="p-8 text-center relative">
+                    <button class="modal-close-btn absolute top-2 right-4 text-gray-400 hover:text-gray-600 text-3xl leading-none">&times;</button>
+                    <h2 class="text-3xl font-bold text-gray-900">Choose Your Plan</h2>
+                    <p class="text-gray-600 mt-2 mb-8">Your first generation is free! Choose a plan to continue creating.</p>
+                    <div class="grid grid-cols-1 md:grid-cols-4 gap-6">
+                        <!-- Pay per use -->
+                        <div class="plan-card border-2 border-gray-200 p-6 rounded-lg">
+                            <h3 class="text-xl font-semibold">Single Shot</h3>
+                            <p class="text-3xl font-bold my-4">$1</p>
+                            <p class="text-gray-500 text-sm mb-6">Per Generation</p>
+                            <button class="payment-btn w-full bg-gray-200 text-gray-800 font-semibold py-2 px-4 rounded-md hover:bg-gray-300" data-price-id="YOUR_ONE_TIME_PRICE_ID" data-tier-name="single">Purchase</button>
+                        </div>
+                        <!-- Tier 1 -->
+                        <div class="plan-card border-2 border-gray-200 p-6 rounded-lg">
+                            <h3 class="text-xl font-semibold">Spark</h3>
+                            <p class="text-3xl font-bold my-4">$2<span class="text-base font-normal text-gray-500">/mo</span></p>
+                            <p class="text-gray-500 text-sm mb-6">4 Generations</p>
+                            <button class="payment-btn w-full bg-indigo-600 text-white font-semibold py-2 px-4 rounded-md hover:bg-indigo-700" data-price-id="YOUR_TIER_1_PRICE_ID" data-tier-name="Spark">Subscribe</button>
+                        </div>
+                        <!-- Tier 2 -->
+                        <div class="plan-card border-2 border-indigo-600 p-6 rounded-lg relative">
+                            <div class="absolute top-0 -translate-y-1/2 left-1/2 -translate-x-1/2 bg-indigo-600 text-white text-xs font-bold px-3 py-1 rounded-full">POPULAR</div>
+                            <h3 class="text-xl font-semibold">Creator</h3>
+                            <p class="text-3xl font-bold my-4">$5<span class="text-base font-normal text-gray-500">/mo</span></p>
+                            <p class="text-gray-500 text-sm mb-6">10 Generations</p>
+                            <button class="payment-btn w-full bg-indigo-600 text-white font-semibold py-2 px-4 rounded-md hover:bg-indigo-700" data-price-id="YOUR_TIER_2_PRICE_ID" data-tier-name="Creator">Subscribe</button>
+                        </div>
+                        <!-- Unlimited -->
+                        <div class="plan-card border-2 border-gray-200 p-6 rounded-lg">
+                            <h3 class="text-xl font-semibold">Universe</h3>
+                            <p class="text-3xl font-bold my-4">$11<span class="text-base font-normal text-gray-500">/mo</span></p>
+                            <p class="text-gray-500 text-sm mb-6">Unlimited</p>
+                            <button class="payment-btn w-full bg-indigo-600 text-white font-semibold py-2 px-4 rounded-md hover:bg-indigo-700" data-price-id="YOUR_UNLIMITED_PRICE_ID" data-tier-name="Universe">Subscribe</button>
+                        </div>
                     </div>
                 </div>
+             </div>
+             <div id="manage-subscription-view" class="hidden">
+                 <div class="p-8 text-center relative">
+                    <button class="modal-close-btn absolute top-2 right-4 text-gray-400 hover:text-gray-600 text-3xl leading-none">&times;</button>
+                    <h2 class="text-3xl font-bold text-gray-900">Your Current Plan</h2>
+                    <p class="text-gray-600 mt-2 mb-8">You are currently subscribed to the <span id="current-plan-name" class="font-semibold"></span> plan.</p>
+                    <button id="change-plan-btn" class="bg-indigo-600 text-white font-semibold py-3 px-6 rounded-md hover:bg-indigo-700 mb-4">Change Plan</button>
+                    <button id="unsubscribe-btn" class="bg-red-600 text-white font-semibold py-3 px-6 rounded-md hover:bg-red-700">Unsubscribe</button>
+                 </div>
              </div>
         </div>
     </div>
@@ -325,6 +345,7 @@
         let currentIdeaInModal = null;
         let googleOauthToken = null;
         let lastGeneratedIdea = null;
+        let guestAttemptedGeneration = false;
 
         // --- DOM ELEMENTS ---
         const gameIdeasContainer = document.getElementById('game-ideas');
@@ -342,14 +363,12 @@
         const modalCategory = document.getElementById('modal-category');
         const modalGenre = document.getElementById('modal-genre');
         const modalViability = document.getElementById('modal-viability');
-        const modalCloseBtn = document.getElementById('modal-close-btn');
         const viabilityBreakdownBtn = document.getElementById('viability-breakdown-btn');
         const modalViabilityBreakdown = document.getElementById('modal-viability-breakdown');
         const breakdownOriginality = document.getElementById('breakdown-originality');
         const breakdownMarket = document.getElementById('breakdown-market');
         const breakdownScope = document.getElementById('breakdown-scope');
         const relatedIdeasList = document.getElementById('related-ideas-list');
-        const loginBtnMain = document.getElementById('login-btn-main');
         const logoutBtn = document.getElementById('logout-btn');
         const userInfoDiv = document.getElementById('user-info');
         const userNameSpan = document.getElementById('user-name');
@@ -361,16 +380,18 @@
         const myCollectionBtn = document.getElementById('my-collection-btn');
         const claimStatusContainer = document.getElementById('claim-status-container');
         const claimedByUserSpan = document.getElementById('claimed-by-user');
-        const loginGate = document.getElementById('login-gate');
-        const themeToggle = document.getElementById('theme-toggle');
         const loginModal = document.getElementById('login-modal');
         const signupToViewModal = document.getElementById('signup-to-view-modal');
         const loginBtnModal = document.getElementById('login-btn-modal');
         const loginBtnSignup = document.getElementById('login-btn-signup');
         const loginBtnHeader = document.getElementById('login-btn-header');
+        const loggedOutControls = document.getElementById('logged-out-controls');
+        const subscribeBtnHeader = document.getElementById('subscribe-btn-header');
+        const themeToggle = document.getElementById('theme-toggle');
+        const manageSubscriptionBtn = document.getElementById('manage-subscription-btn');
 
         // --- Firebase Initialization ---
-        let auth, db, functions, userId;
+        let auth, db, functions, userId, stripe;
         const firebaseConfig = {
             apiKey: "AIzaSyAMP99RMDPn1vlG2Zuc09L3HVw43A71LLY",
             authDomain: "game-idea-universe.firebaseapp.com",
@@ -382,11 +403,13 @@
         };
         // IMPORTANT: Add your Google Client ID here for the export feature to work!
         const GOOGLE_CLIENT_ID = '850865251637-pjqrag7ifu8spe38hs94rcljic8e8hvn.apps.googleusercontent.com';
+        const STRIPE_PUBLISHABLE_KEY = 'YOUR_STRIPE_PUBLISHABLE_KEY_HERE';
 
         const app = initializeApp(firebaseConfig);
         auth = getAuth(app);
         db = getFirestore(app);
         functions = getFunctions(app);
+        stripe = Stripe(STRIPE_PUBLISHABLE_KEY);
 
 
         // --- FUNCTIONS ---
@@ -448,6 +471,7 @@
             if (!promptText) return;
 
             if (!userId) {
+                guestAttemptedGeneration = true;
                 showModal(signupToViewModal);
                 return;
             }
@@ -733,7 +757,8 @@
                     
                     userInfoDiv.classList.remove('hidden');
                     userInfoDiv.classList.add('flex');
-                    loginBtnHeader.classList.add('hidden');
+                    loggedOutControls.classList.add('hidden');
+                    loggedOutControls.classList.remove('flex');
                     userNameSpan.textContent = user.displayName || user.email || "Valued User";
 
                     if (lastGeneratedIdea) {
@@ -746,11 +771,13 @@
                     userId = null;
                     userSavedIdeas = [];
                     globalGameIdeas = [...baseGameIdeas]; // Show base ideas when logged out
+                    updateGenerationCounter(); // Update counter for guest view
                     updateUI();
                     
                     userInfoDiv.classList.add('hidden');
                     userInfoDiv.classList.remove('flex');
-                    loginBtnHeader.classList.remove('hidden');
+                    loggedOutControls.classList.remove('hidden');
+                    loggedOutControls.classList.add('flex');
                     userNameSpan.textContent = '';
                 }
             });
@@ -804,6 +831,9 @@
             } else {
                 // Create a new profile for a new user
                 userProfile = { isCreator: false, generationsRemaining: 1, subscriptionTier: 'free' };
+                if(guestAttemptedGeneration) {
+                    userProfile.generationsRemaining = 0;
+                }
                 await setDoc(userDocRef, userProfile);
             }
             updateGenerationCounter();
@@ -820,7 +850,7 @@
 
         function updateGenerationCounter() {
             if (!userId) {
-                generationCounterDiv.textContent = '';
+                generationCounterDiv.textContent = 'Generations Remaining: 1';
                 return;
             }
             if (userProfile.isCreator) {
@@ -831,6 +861,14 @@
         }
 
         function showPaymentModal() {
+            if (userProfile.subscriptionTier !== 'free') {
+                document.getElementById('plan-selection-view').classList.add('hidden');
+                document.getElementById('manage-subscription-view').classList.remove('hidden');
+                document.getElementById('current-plan-name').textContent = userProfile.subscriptionTier;
+            } else {
+                document.getElementById('plan-selection-view').classList.remove('hidden');
+                document.getElementById('manage-subscription-view').classList.add('hidden');
+            }
             showModal(paymentModal);
         }
 
@@ -838,17 +876,19 @@
             hideModal(paymentModal);
         }
 
-        async function handlePurchase(generations) {
-            // This is a simulation. A real app would handle a Stripe/PayPal transaction here.
-            if (generations === 'Infinity') {
-                userProfile.generationsRemaining = Infinity;
-            } else {
-                userProfile.generationsRemaining += generations;
+        async function handlePurchase(priceId) {
+            if (!userId) {
+                alert("You must be logged in to make a purchase.");
+                return;
             }
-            await updateUserProfileInFirestore();
-            updateGenerationCounter();
-            hidePaymentModal();
-            alert('Purchase successful! Your new generation balance has been updated.');
+            const createStripeCheckoutSession = httpsCallable(functions, 'createStripeCheckoutSession');
+            try {
+                const { data } = await createStripeCheckoutSession({ priceId });
+                await stripe.redirectToCheckout({ sessionId: data.sessionId });
+            } catch (error) {
+                console.error("Stripe checkout error:", error);
+                alert("Could not initiate payment. Please try again.");
+            }
         }
 
         // --- Firestore & Data Functions ---
@@ -1057,7 +1097,14 @@
                 handleGenerateClick();
             }
         });
-        modalCloseBtn.addEventListener('click', () => hideModal(modal));
+        document.querySelectorAll('.modal-close-btn').forEach(btn => {
+            btn.addEventListener('click', (e) => {
+                const modalToClose = e.target.closest('.modal-overlay');
+                if (modalToClose) {
+                    hideModal(modalToClose);
+                }
+            });
+        });
         modal.addEventListener('click', (e) => {
             if (e.target === modal) {
                 hideModal(modal);
@@ -1076,8 +1123,7 @@
         });
         document.querySelectorAll('.payment-btn').forEach(btn => {
             btn.addEventListener('click', (e) => {
-                const generations = e.target.dataset.generations === 'Infinity' ? 'Infinity' : parseInt(e.target.dataset.generations, 10);
-                handlePurchase(generations);
+                handlePurchase(e.target.dataset.priceId);
             });
         });
         saveIdeaBtn.addEventListener('click', () => {
@@ -1097,6 +1143,9 @@
             localStorage.setItem('theme', isDark ? 'dark' : 'light');
             updateThemeIcons(isDark);
         });
+        subscribeBtnHeader.addEventListener('click', showPaymentModal);
+        manageSubscriptionBtn.addEventListener('click', showPaymentModal);
+
 
         function updateThemeIcons(isDark) {
             document.getElementById('theme-icon-light').classList.toggle('hidden', isDark);
